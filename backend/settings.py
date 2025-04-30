@@ -31,7 +31,8 @@ ALLOWED_HOSTS = config(
 
 # Seguridad
 CSRF_TRUSTED_ORIGINS = [
-    "https://sentifront-eight.vercel.app",
+    "https://app.senti.lat",
+    "https://senti.lat",
     "https://api.senti.lat",
 ]
 
