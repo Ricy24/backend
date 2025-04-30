@@ -21,26 +21,18 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5174')
 
 PUBLIC_BACKEND_URL = config('PUBLIC_BACKEND_URL', default='http://localhost:8000') 
 
-NGROK_HOST = ''
-_public_url = config('PUBLIC_BACKEND_URL', default='')
-if _public_url.startswith('https://'):
-    NGROK_HOST = _public_url.split('//')[1]
-elif _public_url.startswith('http://'):
-    NGROK_HOST = _public_url.split('//')[1]
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1',
+    default='localhost,127.0.0.1', # Default solo para desarrollo si no hay .env
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
-if NGROK_HOST and NGROK_HOST not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append(NGROK_HOST)
-    print(f"Added NGROK host to ALLOWED_HOSTS: {NGROK_HOST}")
+
 
 # Seguridad
 CSRF_TRUSTED_ORIGINS = [
-    "https://*.ngrok-free.app",
     "https://sentifront-eight.vercel.app",
+    "https://api.senti.lat",
 ]
 
 # Configuración de CORS
@@ -194,9 +186,6 @@ CORS_ALLOW_METHODS = [
 # Configuración de CORS
 CORS_ALLOWED_ORIGINS = [
     "https://sentifront-eight.vercel.app",  # Frontend en producción
-    "http://localhost:5173",                # Frontend en desarrollo
-    "http://localhost:5174",                # Frontend en desarrollo (si usas otro puerto)
-    "https://9e44-186-29-5-12.ngrok-free.app",  # Backend en ngrok
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales
@@ -241,9 +230,11 @@ SOCIALACCOUNT_PROVIDERS = {
             'access_type': 'online',
         },
         'APP': {
-            'client_id': '93294776142-if5ocrri0386a0ucmjjmkrnif7m6e7ng.apps.googleusercontent.com',
-            'secret': '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',
-            'key': ''
+            # El Client ID es público, puede tener un default
+            'client_id': config('GOOGLE_CLIENT_ID', default='93294776142-if5ocrri0386a0ucmjjmkrnif7m6e7ng.apps.googleusercontent.com'),
+            # ¡El Secret NUNCA debe tener default!
+            'secret': config('GOOGLE_SECRET'),
+            'key': config('GOOGLE_KEY', default='') # Si usas una API key específica también
         }
     }
 }
@@ -263,8 +254,8 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', defaul
 SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=True, cast=bool)
 
 # Claves API para servicios externos
-GROQ_API_KEY = "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"
-HUGGINGFACE_API_KEY = "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"
+GROQ_API_KEY = config('GROQ_API_KEY')
+HUGGINGFACE_API_KEY = config('HUGGINGFACE_API_KEY')
 
 # Configuración de logging (para depuración)
 LOGGING = {
