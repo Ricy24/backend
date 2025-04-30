@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmación de Cita - Senti</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #4b5563; margin: 0; padding: 0; background-color: #f9fafb;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #f3f4f6; padding: 20px;">
+        <!-- Header con logo -->
+        <div style="text-align: center; padding: 20px 0;">
+            <img src="svg/logo.svg" alt="Senti Logo" style="height: 60px; width: auto;" />
+        </div>
+        
+        <div style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 40px; margin-bottom: 30px;">
+            <h2 style="color: #3b82f6; margin-top: 0; font-size: 28px; font-weight: 600; text-align: center;">¡Tu cita ha sido agendada, {{ nombre }}!</h2>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; text-align: center;">Gracias por programar tu sesión de terapia con {{ platform_name }}. Aquí tienes los detalles de tu cita:</p>
+            
+            <!-- Caja de detalles de cita mejorada -->
+            <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border-radius: 14px; padding: 30px; margin: 30px 0; border-left: 5px solid #0ea5e9;">
+                <h3 style="color: #0284c7; margin-top: 0; font-size: 20px;">Detalles de la Cita</h3>
+                
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px; margin-top: 20px;">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12Z" fill="white"/>
+                                <path d="M12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Psicóloga:</span>
+                    </div>
+                    <div style="color: #334155;">{{ psychologist_name }} ({{ psychologist_email }})</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 22H5C3.9 22 3 21.1 3 20V6C3 4.9 3.9 4 5 4H6V2H8V4H16V2H18V4H19C20.1 4 21 4.9 21 6V12H19V10H5V20H12V22Z" fill="white"/>
+                                <path d="M17 16H22V22H16V16H17Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Fecha:</span>
+                    </div>
+                    <div style="color: #334155;">{{ session_date }}</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11.99 2C6.47 2 2 6.48 2 12C2 17.52 6.47 22 11.99 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 11.99 2ZM12 20C7.58 20 4 16.42 4 12C4 7.58 7.58 4 12 4C16.42 4 20 7.58 20 12C20 16.42 16.42 20 12 20Z" fill="white"/>
+                                <path d="M12.5 7H11V13L16.25 16.15L17 14.92L12.5 12.25V7Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Hora:</span>
+                    </div>
+                    <div style="color: #334155;">{{ session_time }}</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 14H9C9 15.1 8.1 16 7 16V18C9.21 18 11 16.21 11 14ZM7 5V7C11.39 7 15 10.61 15 15H17C17 9.5 12.5 5 7 5ZM7 9V11C9.21 11 11 12.79 11 15H13C13 11.69 10.31 9 7 9ZM19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Tipo de Sesión:</span>
+                    </div>
+                    <div style="color: #334155;">{{ session_type }}</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 1H9V3H15V1ZM11 14H13V8H11V14ZM19.03 7.39L20.45 5.97C20.02 5.46 19.55 4.98 19.04 4.56L17.62 5.98C16.07 4.74 14.12 4 12 4C7.03 4 3 8.03 3 13C3 17.97 7.02 22 12 22C16.98 22 21 17.97 21 13C21 10.88 20.26 8.93 19.03 7.39ZM12 20C8.13 20 5 16.87 5 13C5 9.13 8.13 6 12 6C15.87 6 19 9.13 19 13C19 16.87 15.87 20 12 20Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Duración:</span>
+                    </div>
+                    <div style="color: #334155;">{{ session_duration }}</div>
+                    
+                    {% if terapia_id %}
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1ZM12 11.99H19C18.47 16.11 15.72 19.78 12 20.93V12H5V6.3L12 3.19V11.99Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">ID de Terapia:</span>
+                    </div>
+                    <div style="color: #334155;">{{ terapia_id }}</div>
+                    {% endif %}
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 2H6C4.9 2 4.01 2.9 4.01 4L4 20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2ZM16 18H8V16H16V18ZM16 14H8V12H16V14ZM13 9V3.5L18.5 9H13Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Descripción:</span>
+                    </div>
+                    <div style="color: #334155;">{{ description }}</div>
+                </div>
+            </div>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; text-align: center;">Puedes gestionar tus citas y ver más detalles en tu panel de usuario:</p>
+            
+            <!-- Botón mejorado -->
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{ dashboard_url }}" style="background-color: #3b82f6; color: white; font-weight: 600; padding: 14px 32px; border-radius: 30px; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s;">Ir al Panel</a>
+            </div>
+            
+            <!-- Recordatorio importante -->
+            <div style="background-color: #fff0f3; border-left: 5px solid #fb7185; border-radius: 8px; padding: 20px; margin: 30px 0;">
+                <div style="display: flex; align-items: flex-start;">
+                    <div style="margin-right: 15px; padding-top: 2px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#e11d48"/>
+                            <path d="M13 7H11V13H13V7Z" fill="#e11d48"/>
+                            <path d="M13 15H11V17H13V15Z" fill="#e11d48"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p style="color: #be123c; font-size: 15px; line-height: 1.6; margin: 0;">
+                            Si necesitas cancelar o reprogramar, hazlo con al menos <strong>2 horas de antelación</strong> para evitar cargos. Contáctanos en <a href="mailto:{{ support_contact }}" style="color: #3b82f6; text-decoration: none; font-weight: 600;">{{ support_contact }}</a> si tienes alguna pregunta.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información adicional -->
+            <div style="background-color: #eff6ff; border-radius: 12px; padding: 30px; margin: 30px 0;">
+                <h4 style="color: #0f172a; margin-top: 0; font-size: 18px;">Recomendaciones para tu sesión</h4>
+                <ul style="color: #334155; padding-left: 20px;">
+                    <li style="margin-bottom: 10px;">Busca un espacio tranquilo y privado para tu sesión</li>
+                    <li style="margin-bottom: 10px;">Conecta con al menos 5 minutos de anticipación</li>
+                    <li style="margin-bottom: 10px;">Ten a mano papel y lápiz para tomar notas si lo deseas</li>
+                    <li>Verifica tu conexión a internet antes de la sesión</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="text-align: center; padding: 20px 0; color: #94a3b8; font-size: 14px;">
+            <p>{{ platform_name }} © {{ year }}. Todos los derechos reservados.</p>
+            <p>Recibiste este correo porque agendaste una cita en nuestra plataforma.</p>
+            <div style="margin-top: 10px;">
+                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Política de Privacidad</a>
+                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Términos de Servicio</a>
+                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Contacto</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

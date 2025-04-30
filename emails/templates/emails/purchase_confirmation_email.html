@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmación de Compra - Senti</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #4b5563; margin: 0; padding: 0; background-color: #f9fafb;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #f3f4f6; padding: 20px;">
+        <!-- Header con logo -->
+        <div style="text-align: center; padding: 20px 0;">
+            <img src="svg/logo.svg" alt="Senti Logo" style="height: 60px; width: auto;" />
+        </div>
+        
+        <div style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 40px; margin-bottom: 30px;">
+            <h2 style="color: #3b82f6; margin-top: 0; font-size: 28px; font-weight: 600; text-align: center;">¡Gracias por tu compra, {{ nombre }}!</h2>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="background-color: #dbeafe; padding: 20px; border-radius: 50%;">
+                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="#3b82f6"/>
+                </svg>
+            </div>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; text-align: center;">Hemos recibido tu pago y tu compra ha sido confirmada. A continuación, te compartimos los detalles:</p>
+            
+            <!-- Caja de detalles de compra mejorada -->
+            <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border-radius: 14px; padding: 30px; margin: 30px 0; border-left: 5px solid #0ea5e9;">
+                <h3 style="color: #0284c7; margin-top: 0; font-size: 20px;">Detalles de la Compra</h3>
+                
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px; margin-top: 20px;">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M22 3H2C0.9 3 0 3.9 0 5V19C0 20.1 0.9 21 2 21H22C23.1 21 24 20.1 24 19V5C24 3.9 23.1 3 22 3ZM22 19H2V5H22V19Z" fill="white"/>
+                                <path d="M14 15H20V17H14V15ZM14 11H20V13H14V11ZM14 7H20V9H14V7ZM6 7H12V17H6V7Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Referencia:</span>
+                    </div>
+                    <div style="color: #334155;">{{ reference_code }}</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11.5 2C6.81 2 3 5.81 3 10.5C3 15.19 6.81 19 11.5 19H12V22C16.86 19.66 20 15 20 10.5C20 5.81 16.19 2 11.5 2ZM12.5 16.5H10.5V14.5H12.5V16.5ZM12.5 13H10.5C10.5 9.75 13.5 10 13.5 8C13.5 6.9 12.6 6 11.5 6C10.4 6 9.5 6.9 9.5 8H7.5C7.5 5.79 9.29 4 11.5 4C13.71 4 15.5 5.79 15.5 8C15.5 10.5 12.5 10.75 12.5 13Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Tipo de Terapia:</span>
+                    </div>
+                    <div style="color: #334155;">{{ therapy_type }}</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 12H9C9 15.31 11.69 18 15 18V16C12.79 16 11 14.21 11 12ZM9 8V10C11.21 10 13 11.79 13 14H15C15 10.69 12.31 8 9 8ZM18 9C18 5.14 14.86 2 11 2V4C13.76 4 16 6.24 16 9H18ZM19 17H21V15H19V17ZM7 17H9V15H7V17ZM19 9H21V7H19V9ZM19 13H21V11H19V13ZM15 17H17V15H15V17ZM11 17H13V15H11V17ZM3 17H5V15H3V17ZM3 13H5V11H3V13ZM3 9H5V7H3V9ZM3 5H5V3H3V5ZM7 5H9V3H7V5ZM11 5H13V3H11V5ZM15 5H17V3H15V5Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Cantidad de Sesiones:</span>
+                    </div>
+                    <div style="color: #334155;">{{ session_count }}</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12.5 6.9C11.85 6.9 11.3 7.45 11.3 8.1C11.3 8.75 11.85 9.3 12.5 9.3C13.15 9.3 13.7 8.75 13.7 8.1C13.7 7.45 13.15 6.9 12.5 6.9ZM12.5 14.9C11.85 14.9 11.3 15.45 11.3 16.1C11.3 16.75 11.85 17.3 12.5 17.3C13.15 17.3 13.7 16.75 13.7 16.1C13.7 15.45 13.15 14.9 12.5 14.9ZM12.5 10.9C11.85 10.9 11.3 11.45 11.3 12.1C11.3 12.75 11.85 13.3 12.5 13.3C13.15 13.3 13.7 12.75 13.7 12.1C13.7 11.45 13.15 10.9 12.5 10.9ZM16.5 6.9C15.85 6.9 15.3 7.45 15.3 8.1C15.3 8.75 15.85 9.3 16.5 9.3C17.15 9.3 17.7 8.75 17.7 8.1C17.7 7.45 17.15 6.9 16.5 6.9ZM16.5 14.9C15.85 14.9 15.3 15.45 15.3 16.1C15.3 16.75 15.85 17.3 16.5 17.3C17.15 17.3 17.7 16.75 17.7 16.1C17.7 15.45 17.15 14.9 16.5 14.9ZM16.5 10.9C15.85 10.9 15.3 11.45 15.3 12.1C15.3 12.75 15.85 13.3 16.5 13.3C17.15 13.3 17.7 12.75 17.7 12.1C17.7 11.45 17.15 10.9 16.5 10.9ZM8.5 6.9C7.85 6.9 7.3 7.45 7.3 8.1C7.3 8.75 7.85 9.3 8.5 9.3C9.15 9.3 9.7 8.75 9.7 8.1C9.7 7.45 9.15 6.9 8.5 6.9ZM8.5 14.9C7.85 14.9 7.3 15.45 7.3 16.1C7.3 16.75 7.85 17.3 8.5 17.3C9.15 17.3 9.7 16.75 9.7 16.1C9.7 15.45 9.15 14.9 8.5 14.9ZM20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V6H20V18ZM8.5 10.9C7.85 10.9 7.3 11.45 7.3 12.1C7.3 12.75 7.85 13.3 8.5 13.3C9.15 13.3 9.7 12.75 9.7 12.1C9.7 11.45 9.15 10.9 8.5 10.9Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Precio por Sesión:</span>
+                    </div>
+                    <div style="color: #334155;">{{ price_per_session }}</div>
+                    
+                    {% if discount_applied %}
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21.41 11.58L12.41 2.58C12.05 2.22 11.55 2 11 2H4C2.9 2 2 2.9 2 4V11C2 11.55 2.22 12.05 2.59 12.42L11.59 21.42C11.95 21.78 12.45 22 13 22C13.55 22 14.05 21.78 14.41 21.42L21.41 14.42C21.78 14.05 22 13.55 22 13C22 12.45 21.77 11.94 21.41 11.58ZM6.5 8C5.67 8 5 7.33 5 6.5C5 5.67 5.67 5 6.5 5C7.33 5 8 5.67 8 6.5C8 7.33 7.33 8 6.5 8Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Descuento Aplicado:</span>
+                    </div>
+                    <div style="color: #334155;">{{ discount_amount }} ({{ discount_code }})</div>
+                    {% endif %}
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.31 11.14C10.54 10.69 9.97 10.2 9.97 9.47C9.97 8.63 10.76 8.04 12.07 8.04C13.45 8.04 13.97 8.7 14.01 9.68H15.72C15.67 8.34 14.85 7.11 13.23 6.71V5H10.9V6.69C9.39 7.01 8.18 7.99 8.18 9.5C8.18 11.29 9.67 12.19 11.84 12.71C13.79 13.17 14.18 13.86 14.18 14.58C14.18 15.11 13.79 15.97 12.08 15.97C10.48 15.97 9.85 15.25 9.76 14.33H8.04C8.14 16.03 9.4 16.99 10.9 17.3V19H13.24V17.33C14.76 17.04 15.96 16.17 15.97 14.56C15.96 12.36 14.07 11.6 12.31 11.14Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Total Pagado:</span>
+                    </div>
+                    <div style="color: #334155; font-weight: 600;">{{ total_amount }}</div>
+                    
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM17 12H7V10H17V12ZM14 15H7V14H14V15ZM7 8H10V7H7V8Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Fecha de Compra:</span>
+                    </div>
+                    <div style="color: #334155;">{{ purchase_date }}</div>
+                    
+                    {% if is_shared_therapy %}
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 11C17.66 11 18.99 9.66 18.99 8C18.99 6.34 17.66 5 16 5C14.34 5 13 6.34 13 8C13 9.66 14.34 11 16 11ZM8 11C9.66 11 10.99 9.66 10.99 8C10.99 6.34 9.66 5 8 5C6.34 5 5 6.34 5 8C5 9.66 6.34 11 8 11ZM8 13C5.67 13 1 14.17 1 16.5V19H15V16.5C15 14.17 10.33 13 8 13ZM16 13C15.71 13 15.38 13.02 15.03 13.05C16.19 13.89 17 15.02 17 16.5V19H23V16.5C23 14.17 18.33 13 16 13Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <span style="font-weight: 600; color: #0f172a;">Terapia Compartida:</span>
+                    </div>
+                    <div style="color: #334155;">Estas sesiones están asociadas a tu terapia de {{ therapy_type }} y pueden ser usadas por todos los miembros.</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Información de factura -->
+            <div style="background-color: #fcfcfc; border: 1px dashed #d1d5db; border-radius: 12px; padding: 25px; margin: 30px 0;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 10px;">
+                        <path d="M20 4H4C2.89 4 2.01 4.89 2.01 6L2 18C2 19.11 2.89 20 4 20H20C21.11 20 22 19.11 22 18V6C22 4.89 21.11 4 20 4ZM20 18H4V12H20V18ZM20 8H4V6H20V8Z" fill="#6b7280"/>
+                    </svg>
+                    <h4 style="color: #374151; margin: 0; font-size: 18px;">Información de Facturación</h4>
+                </div>
+                <p style="color: #4b5563; margin-bottom: 15px;">La factura electrónica de esta compra ha sido enviada a tu correo registrado. También puedes descargarla desde tu panel de usuario.</p>
+                <p style="color: #4b5563; margin: 0;">Recuerda guardar este correo como comprobante de tu compra.</p>
+            </div>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; text-align: center;">Puedes ver tus sesiones disponibles y gestionar tus citas en tu panel de usuario:</p>
+            
+            <!-- Botón mejorado -->
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{ dashboard_url }}" style="background-color: #3b82f6; color: white; font-weight: 600; padding: 14px 32px; border-radius: 30px; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s;">Ir al Panel</a>
+            </div>
+            
+            <!-- Próximos pasos -->
+            <div style="background-color: #f0fdf4; border-left: 5px solid #22c55e; border-radius: 8px; padding: 20px; margin: 30px 0;">
+                <h4 style="color: #166534; margin-top: 0; font-size: 18px;">¿Qué sigue ahora?</h4>
+                <ol style="color: #334155; padding-left: 20px; margin-bottom: 0;">
+                    <li style="margin-bottom: 10px;">Agenda tu primera sesión desde el panel de usuario</li>
+                    <li style="margin-bottom: 10px;">Completa tu perfil para una experiencia personalizada</li>
+                    <li>Explora los recursos disponibles para comenzar tu proceso terapéutico</li>
+                </ol>
+            </div>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Si tienes alguna pregunta, no dudes en contactarnos en <a href="mailto:{{ support_email }}" style="color: #3b82f6; text-decoration: none; font-weight: 600;">{{ support_email }}</a>.</p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="text-align: center; padding: 20px 0; color: #94a3b8; font-size: 14px;">
+            <p>Senti © {{ year }}. Todos los derechos reservados.</p>
+            <p>Recibiste este correo porque realizaste una compra en nuestra plataforma.</p>
+            <div style="margin-top: 10px;">
+                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Política de Privacidad</a>
+                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Términos de Servicio</a>
+                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Contacto</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

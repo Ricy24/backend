@@ -1,0 +1,55 @@
+# requirements.txt
+
+# --- Core Django y REST Framework ---
+django>=4.0,<5.0  # Especifica una versión compatible de Django
+djangorestframework
+djangorestframework-simplejwt
+
+# --- Base de Datos ---
+psycopg2-binary  # Para PostgreSQL
+
+# --- Autenticación y Cuentas ---
+django-allauth
+
+# --- ASGI / Channels / Websockets ---
+channels
+channels-redis
+asgiref # Generalmente una dependencia de channels, pero bueno incluirla
+
+# --- Tareas Asíncronas y Programadas ---
+celery
+redis # Necesario como broker/backend para Celery y Channels
+
+# --- APIs Externas y Servicios ---
+requests # Para hacer llamadas HTTP genéricas
+google-api-python-client # Para interactuar con APIs de Google (Calendar, etc.)
+google-auth # Para autenticación con Google
+google-auth-oauthlib # Complemento OAuth para google-auth
+google-auth-httplib2 # Transporte HTTP para google-auth
+mercadopago # Para la pasarela de pago Mercado Pago
+sib-api-v3-sdk # Para la API de Brevo (Sendinblue)
+groq # Para la API de Groq
+openai-whisper # Para la transcripción de audio con Whisper
+
+# --- Almacenamiento de Archivos (Cloudflare R2 / S3) ---
+boto3 # SDK de AWS, necesario para interactuar con R2/S3
+
+# --- Configuración y Utilidades ---
+python-decouple # Para manejar variables de entorno desde .env
+django-cors-headers # Para manejar CORS
+whitenoise # Para servir archivos estáticos eficientemente
+
+# --- Campos Específicos ---
+django-multiselectfield # Para el campo MultiSelectField en models.py
+
+# --- Generación de Documentos ---
+reportlab # Para generar PDFs (informes, etc.)
+
+# --- (Opcional pero recomendado) Servidor ASGI ---
+# Elige uno si no estás usando el servidor de desarrollo de Django para producción/staging
+# daphne
+# uvicorn[standard] # Incluye dependencias estándar como websockets y http
+
+# --- Otros (Revisa si realmente los necesitas directamente) ---
+# pytz # Django suele manejar esto, pero a veces se importa directamente
+# pillow # Si manejas subida/procesamiento de imágenes directamente

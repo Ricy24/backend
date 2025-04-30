@@ -1,0 +1,41 @@
+# Entornos virtuales
+env/
+venv/
+env_py310/
+*/venv/
+*/env/
+
+# Archivo de variables de entorno
+.env
+*.env
+
+# Archivos compilados de Python y caché
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Bases de datos locales (si usas SQLite para desarrollo)
+*.sqlite3
+db.sqlite3
+
+# Archivos de IDEs/Editores
+.vscode/
+.idea/
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Archivos estáticos y media (generalmente se generan/recopilan en el servidor)
+# Puedes comentar estas líneas si SÍ quieres versionar tus archivos estáticos/media
+# directamente desde el desarrollo, aunque no es lo más común para despliegues.
+# Si usas R2, definitivamente no necesitas versionar 'media'.
+staticfiles/
+media/
+
+# Otros archivos específicos de tu proyecto que no deban subirse
+# ...añade aquí otros si los tienes...
