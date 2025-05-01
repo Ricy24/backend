@@ -186,7 +186,8 @@ CORS_ALLOW_METHODS = [
 
 # Configuración de CORS
 CORS_ALLOWED_ORIGINS = [
-    "https://sentifront-eight.vercel.app",  # Frontend en producción
+    "https://app.senti.lat", 
+    "https://senti.lat", # Frontend en producción
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales
