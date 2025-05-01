@@ -34,6 +34,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://app.senti.lat",
     "https://senti.lat",
     "https://api.senti.lat",
+    "http://localhost:8000",
 ]
 
 # Configuración de CORS

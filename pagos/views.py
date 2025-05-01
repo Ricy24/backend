@@ -87,7 +87,7 @@ class InitiateCheckoutView(APIView):
             tax_return_base_str = "0"
             currency = "COP"
 
-            response_url = f"{settings.FRONTEND_URL}/payment-response/"
+            response_url = f"{settings.FRONTEND_URL}/dashboard/payment-response/"
             confirmation_url = self._get_webhook_url(request, 'pagos:webhook-payu')
 
             description = f"Compra de {purchase.purchased_session_count} sesiones ({purchase.therapy_type_purchased})"
