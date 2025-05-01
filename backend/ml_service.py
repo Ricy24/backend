@@ -46,8 +46,8 @@ except Exception as e:
 # --- Configuración de FastAPI ---
 app = FastAPI()
 origins = [
-    "http://localhost:5174",
-    "http://localhost:5173",
+    "http://app.senti.lat",
+    "http://senti.lat",
 ]
 app.add_middleware(
     CORSMiddleware,
