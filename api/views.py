@@ -29,6 +29,7 @@ from dashboard.models import Mood
 from community.views import Post 
 from community.models import Post 
 from emails.utils import send_brevo_email
+
 from chat.models import ChatConfig
 from rest_framework.parsers import MultiPartParser, FormParser # Añadir parsers explícitamente
  
@@ -1303,27 +1304,27 @@ class GenerarInvitacionView(APIView):
 
     def post(self, request, terapia_id):
         try:
-            # Usar 'terapia_id' en lugar de '_id'
             terapia = Terapia.objects.get(id=terapia_id)
             miembro = MiembroTerapia.objects.get(terapia=terapia, usuario=request.user)
-            
+
             if not miembro.es_lider:
                 return Response(
                     {'error': 'Solo el líder puede generar invitaciones'},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            
+
             token = str(uuid.uuid4())
             invitacion = InvitacionTerapia.objects.create(
                 terapia=terapia,
                 token=token,
-                creado_por=request.user  # Corregido 'creado_por' a 'creada_por' si el modelo lo requiere
+                creado_por=request.user
             )
-            enlace = f"{settings.FRONTEND_URL}/invitacion/{token}"
-            
-            logger.info(f"Invitación generada para terapia {terapia_id} por {request.user.email}")
-            return Response({'enlace': enlace}, status=status.HTTP_201_CREATED)
-        
+            # enlace = f"{settings.FRONTEND_URL}/invitacion/{token}" # <-- YA NO SE NECESITA
+
+            logger.info(f"Invitación (token: {token}) generada para terapia {terapia_id} por {request.user.email}")
+            # Devolver solo el token
+            return Response({'token': token}, status=status.HTTP_201_CREATED) # <-- CAMBIO AQUÍ
+
         except Terapia.DoesNotExist:
             logger.error(f"Terapia con ID {terapia_id} no encontrada")
             return Response({'error': 'Terapia no encontrada'}, status=status.HTTP_404_NOT_FOUND)
@@ -1332,7 +1333,8 @@ class GenerarInvitacionView(APIView):
             return Response({'error': 'No eres miembro de esta terapia'}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
             logger.error(f"Error en GenerarInvitacionView: {str(e)}")
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Considerar devolver un error más genérico en producción
+            return Response({'error': 'Error interno al generar invitación.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class UnirseTerapiaView(APIView):
     permission_classes = [IsAuthenticated]
