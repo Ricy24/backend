@@ -20,7 +20,9 @@ import requests
 import whisper
 import random
 import time
+import logging
 
+logger = logging.getLogger(__name__)
 # --- Cargar .env desde el directorio padre ---
 current_script_dir = pathlib.Path(__file__).parent
 dotenv_path = current_script_dir.parent / '.env'
@@ -287,111 +289,121 @@ async def meditation_step(
 async def assistant(audio: UploadFile = File(...), user_id: str = Form(...)):
     temp_audio_path = None
     response_audio_path = None
-    if not user_id: raise HTTPException(status_code=422, detail="user_id obligatorio.")
+    if not user_id:
+        # No necesitas loguear esto necesariamente, FastAPI ya lo maneja
+        raise HTTPException(status_code=422, detail="user_id obligatorio.")
     try:
+        # --- Guardar Audio ---
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
             temp_audio_path = tmp_file.name
-            try: shutil.copyfileobj(audio.file, tmp_file)
-            finally: await audio.close()
-        logger.info(f"Audio entrada /assistant: {temp_audio_path}")
+            logger.info(f"Guardando audio de entrada para user {user_id} en: {temp_audio_path}")
+            try:
+                shutil.copyfileobj(audio.file, tmp_file)
+            finally:
+                # Siempre cierra el archivo subido
+                await audio.close()
+        logger.info(f"Audio entrada /assistant guardado: {temp_audio_path} (User: {user_id})")
 
-        if not whisper_model: raise HTTPException(status_code=503, detail="Transcripción no disponible.")
+        # --- Verificar Modelo Whisper ---
+        if not whisper_model:
+            # ¡Log DENTRO del if!
+            logger.error(f"Error crítico: Modelo Whisper no está cargado al procesar solicitud para user {user_id}.")
+            raise HTTPException(status_code=503, detail="Servicio de transcripción no disponible temporalmente.")
+
+        # --- Transcripción Whisper (con logging detallado y captura de error) ---
+        transcript_text = "" # Inicializar por si falla la transcripción
         try:
+            logger.info(f"Iniciando transcripción Whisper para: {temp_audio_path} (User: {user_id})")
+            # --- Aquí es donde fallaba antes ---
             transcript_result = await asyncio.to_thread(whisper_model.transcribe, temp_audio_path, language="es")
-            transcript_text = transcript_result["text"].strip()
-            logger.info(f"Texto transcrito user {user_id}: '{transcript_text}'")
-        except Exception as e: raise HTTPException(status_code=500, detail="Error procesando voz.")
+            # ------------------------------------
+            logger.info(f"Transcripción Whisper completada para user {user_id}.")
+            transcript_text = transcript_result.get("text", "").strip() # Usar .get para seguridad
+            if transcript_text:
+                 logger.info(f"Texto transcrito (User: {user_id}): '{transcript_text[:100]}...'") # Loguear solo el inicio por si es largo
+            else:
+                 logger.info(f"Transcripción resultó en texto vacío o solo espacios (User: {user_id}).")
 
+        except Exception as e_whisper:
+            # --- ¡¡AQUÍ ESTÁ LA CLAVE!! ---
+            logger.exception(f"!!! ERROR DURANTE LA TRANSCRIPCIÓN WHISPER (User: {user_id}) !!!")
+            # Ahora sí veremos el traceback detallado en los logs.
+            # Podemos seguir devolviendo un error genérico al usuario.
+            raise HTTPException(status_code=500, detail="Error interno al procesar la voz.")
+
+        # --- Manejo de Silencio o Texto Vacío ---
         if not transcript_text:
-            logger.warning(f"No se detectó habla user {user_id}.")
+            logger.warning(f"No se detectó habla o transcripción vacía para user {user_id}.")
             no_speech_text = "Lo siento, no te he entendido. ¿Puedes repetirlo?"
             response_audio_path = os.path.join(tempfile.gettempdir(), f"no_speech_{uuid.uuid4()}.mp3")
+            logger.info(f"Generando audio de 'no habla' para user {user_id} en {response_audio_path}")
             success = await generate_audio_edge_tts(no_speech_text, response_audio_path)
             if success:
-                # Devolver SIN BackgroundTask
+                 logger.info(f"Enviando respuesta de 'no habla' a user {user_id}")
                  return FileResponse(
                      response_audio_path, media_type="audio/mpeg", filename="error_no_speech.mp3"
+                     # Considera añadir background task para limpiar este archivo
                  )
             else:
-                 return JSONResponse(content={"error": "No se detectó habla y falló audio."}, status_code=400)
+                 logger.error(f"Fallo al generar audio de 'no habla' para user {user_id}.")
+                 # Devolver un error JSON si falla la generación de audio de error
+                 return JSONResponse(content={"error": "No se pudo procesar el audio, y falló la generación de respuesta."}, status_code=500)
 
-        user_name = await get_user_name(user_id) or "usuario"
+        # --- Obtener Nombre de Usuario ---
+        user_name = await get_user_name(user_id) or "usuario" # get_user_name ya loguea internamente
+
+        # --- Llamada a Groq ---
         system_prompt = (
             f"Eres Senti, un asistente de IA conversacional, útil y amigable. "
             f"Estás hablando con '{user_name}'. Responde de forma clara y concisa. "
             f"Mantén un tono amable y servicial. No eres un guía de meditación en este rol."
         )
+        # get_groq_response ya tiene buen logging interno
         assistant_response_text = await get_groq_response(
             user_id=user_id, user_input=transcript_text, user_name=user_name,
             system_prompt=system_prompt, history_dict=chat_history,
             max_history=MAX_CHAT_HISTORY_TURNS, max_tokens=250
         )
 
+        # --- Generar Audio de Respuesta ---
         response_audio_filename = f"assistant_response_{uuid.uuid4()}.mp3"
         response_audio_path = os.path.join(tempfile.gettempdir(), response_audio_filename)
+        logger.info(f"Generando audio de respuesta asistente para user {user_id} en: {response_audio_path}")
         success = await generate_audio_edge_tts(assistant_response_text, response_audio_path)
+
         if not success:
-            logger.error(f"Fallo al generar audio asistente (user {user_id}).")
+            logger.error(f"Fallo al generar audio de respuesta asistente (user {user_id}). Texto era: '{assistant_response_text[:100]}...'")
+            # Si falla la generación de audio, devolvemos el texto como fallback
             return JSONResponse(
-                content={"response_text": assistant_response_text, "error": "Fallo al generar audio."},
-                status_code=200
+                content={"response_text": assistant_response_text, "error": "Fallo al generar audio de respuesta."},
+                status_code=200 # Se considera éxito parcial, tenemos el texto.
              )
 
-        logger.info(f"Respuesta audio /assistant: {response_audio_path}")
-        # Devolver SIN BackgroundTask
+        # --- Enviar Respuesta de Audio ---
+        logger.info(f"Enviando respuesta de audio /assistant para user {user_id}: {response_audio_path}")
         return FileResponse(
             response_audio_path, media_type="audio/mpeg", filename="assistant_response.mp3"
+            # Considera añadir background task para limpiar este archivo
         )
 
-    except HTTPException as http_exc: raise http_exc
+    except HTTPException as http_exc:
+        # Re-lanzar excepciones HTTP para que FastAPI las maneje
+        # Podrías añadir un log aquí si quieres verlas explícitamente
+        logger.warning(f"HTTPException manejada en /assistant (User: {user_id}): {http_exc.status_code} - {http_exc.detail}")
+        raise http_exc
     except Exception as e:
-        logger.error(f"Error inesperado en /assistant user {user_id}: {e}", exc_info=True)
-        return JSONResponse(content={"error": "Error interno inesperado asistente."}, status_code=500)
+        # Captura cualquier otro error inesperado
+        logger.exception(f"!!! ERROR INESPERADO GENÉRICO en /assistant (User: {user_id}) !!!")
+        return JSONResponse(content={"error": "Error interno inesperado en el asistente."}, status_code=500)
     finally:
-        # Limpieza manual del audio de entrada si existe
+        # Limpieza del audio de ENTRADA
         if temp_audio_path and os.path.exists(temp_audio_path):
-            try: os.remove(temp_audio_path)
-            except Exception as e_clean: logger.warning(f"No se pudo eliminar {temp_audio_path}: {e_clean}")
-        # El audio de SALIDA NO se limpia automáticamente aquí
-
-# --- Función auxiliar para la lógica de meditación (SIN CAMBIOS EN SU LÓGICA INTERNA) ---
-async def get_groq_meditation_step(
-    session_history: List[Dict[str, str]], theme: str, user_name: str,
-    current_step: int, model: str = None, max_tokens: int = 150
-) -> Tuple[Optional[str], bool]:
-    is_finished = False
-    if current_step > MAX_MEDITATION_STEPS:
-        logger.info(f"Meditación: Límite de pasos ({MAX_MEDITATION_STEPS}) alcanzado.")
-        is_finished = True
-        assistant_message = f"Muy bien, {user_name}. Hemos llegado al final de nuestra práctica sobre '{theme}'. Tómate un momento para notar cómo te sientes. Cuando estés listo/a, puedes abrir los ojos. Que la calma te acompañe."
-        return assistant_message, is_finished
-
-    system_prompt = (
-        f"Eres Senti, guía de meditación calmada y paciente. Guías a '{user_name}' en meditación sobre '{theme}'. "
-        f"Da UNA instrucción o pregunta CORTA por turno. Espera respuesta ('listo', silencio, etc.). Tono tranquilo y amable. "
-        f"Pasos generales: Saludo/listo -> Postura/ojos -> Respiración (2-3 turnos) -> Foco en '{theme}' (varios turnos) -> Vuelta al presente -> Indicación de finalización (sin despedida final aquí). "
-        f"**IMPORTANTE: SOLO tu próxima frase/pregunta. Sé MUY concisa.**"
-    )
-    messages = [{"role": "system", "content": system_prompt}] + session_history
-    try:
-        if model is None: model = select_available_model(expected_tokens=max_tokens)
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        data = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": 0.5}
-        response = await asyncio.to_thread(
-            requests.post, GROQ_API_URL, headers=headers, json=data, timeout=45
-        )
-        response.raise_for_status()
-        response_data = response.json()
-        assistant_message = response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-        if not assistant_message:
-             logger.error(f"Respuesta Groq vacía meditación step {current_step}.")
-             assistant_message = "Continuemos con calma. Concéntrate en tu respiración." # Fallback simple
-        else:
-             logger.info(f"Groq meditation response (step {current_step}): '{assistant_message[:100]}...'")
-        return assistant_message, False # is_finished se decide arriba por contador
-    except requests.exceptions.Timeout: return f"Lo siento {user_name}, hay un retraso. Tomemos una pausa.", False
-    except requests.exceptions.RequestException as e: return f"Lo siento {user_name}, hubo un problema técnico.", False
-    except Exception as e: return f"Disculpa {user_name}, ocurrió algo inesperado.", False
+            try:
+                os.remove(temp_audio_path)
+                logger.debug(f"Archivo temporal de entrada eliminado: {temp_audio_path}")
+            except Exception as e_clean:
+                logger.warning(f"No se pudo eliminar archivo temporal {temp_audio_path}: {e_clean}")
+        # Nota: Los archivos de audio de SALIDA (.mp3) aún no se limpian automáticamente.
 
 # --- Uvicorn runner ---
 if __name__ == "__main__":
