@@ -248,15 +248,52 @@ class WebhookPayUView(APIView):
         """Valida la firma de PayU."""
         required = ['reference_sale', 'state_pol', 'value', 'currency', 'sign']
         if not all(data.get(k) for k in required):
+            logger.error(f"[PayU] Webhook para {data.get('reference_sale', 'N/A')} con datos incompletos: {data.keys()}")
             return False, "Datos incompletos"
 
         try:
-            formatted_value = "{:.2f}".format(decimal.Decimal(data['value']))
-            signature_string = f"{settings.PAYU_API_KEY}~{settings.PAYU_MERCHANT_ID}~{data['reference_sale']}~{formatted_value}~{data['currency']}~{data['state_pol']}"
+            # Obtener los componentes de la firma
+            api_key = settings.PAYU_API_KEY
+            merchant_id = settings.PAYU_MERCHANT_ID
+            reference_sale = data['reference_sale']
+            value_str = data['value']
+            currency = data['currency']
+            state_pol = data['state_pol']
+            received_sign = data['sign']
+
+            # --- INICIO: Lógica de formato corregida ---
+            try:
+                amount_decimal = decimal.Decimal(value_str)
+                # Aplicar la regla de formato de PayU para la firma
+                if amount_decimal.compare(amount_decimal.quantize(decimal.Decimal('1.00'))) == 0:
+                    # Si los centavos son .00, formatear con un decimal
+                    formatted_value_for_sign = "{:.1f}".format(amount_decimal)
+                else:
+                    # Si los centavos no son .00, formatear con dos decimales
+                    formatted_value_for_sign = "{:.2f}".format(amount_decimal)
+            except decimal.InvalidOperation:
+                logger.error(f"[PayU] Error convirtiendo valor '{value_str}' a Decimal para {reference_sale}")
+                return False, "Valor inválido"
+            # --- FIN: Lógica de formato corregida ---
+
+            # Construir el string para la firma con el valor formateado correctamente
+            signature_string = f"{api_key}~{merchant_id}~{reference_sale}~{formatted_value_for_sign}~{currency}~{state_pol}"
+
+            # Calcular la firma esperada
             calculated_signature = hashlib.md5(signature_string.encode()).hexdigest()
-            return calculated_signature.lower() == data['sign'].lower(), "Firma válida" if calculated_signature.lower() == data['sign'].lower() else "Firma inválida"
+
+            # Comparar (insensible a mayúsculas/minúsculas)
+            is_valid = calculated_signature.lower() == received_sign.lower()
+
+            if not is_valid:
+                logger.warning(f"[PayU] {reference_sale}: Firma inválida. Calculada: '{calculated_signature}', Recibida: '{received_sign}', String: '{signature_string}'")
+                return False, "Firma inválida"
+            else:
+                 logger.info(f"[PayU] {reference_sale}: Firma válida.")
+                 return True, "Firma válida"
+
         except Exception as e:
-            logger.error(f"Error validando firma PayU: {e}", exc_info=True)
+            logger.error(f"[PayU] Error validando firma PayU para {data.get('reference_sale', 'N/A')}: {e}", exc_info=True)
             return False, "Error validando firma"
 
     def post(self, request):
