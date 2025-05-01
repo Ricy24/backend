@@ -169,10 +169,11 @@ class InitiatePurchaseView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # Vista para listar las compras del usuario (usar el ReadSerializer)
 class UserPurchasesView(APIView):
+    permission_classes = [IsAuthenticated] 
     def get(self, request):
         user = request.user
-        if not user.is_authenticated:
-            return Response({"error": "Usuario no autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+       # if not user.is_authenticated:
+          #  return Response({"error": "Usuario no autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Compras personales (sin terapia o con terapia individual del usuario)
         personal_purchases = Purchase.objects.filter(
@@ -181,14 +182,24 @@ class UserPurchasesView(APIView):
         )
 
         # Compras compartidas (terapias de pareja o familiar donde el usuario es miembro)
-        shared_purchases = Purchase.objects.filter(
-            terapia__in=MiembroTerapia.objects.filter(usuario=user).exclude(terapia__tipo='individual').values('terapia'),
-            terapia__tipo__in=['pareja', 'familiar']
-        )
+        shared_therapy_ids = MiembroTerapia.objects.filter(
+            usuario=user,
+            terapia__tipo__in=['pareja', 'familiar'] # Solo terapias compartidas
+        ).values_list('terapia_id', flat=True)
 
-        # Combinar ambas consultas, pero mantenerlas distinguibles si es necesario
-        purchases = personal_purchases | shared_purchases
-        purchases = purchases.distinct().order_by('-purchase_date')
+        # Construir la consulta final filtrando por usuario o terapia compartida
+        # Y AÑADIENDO EL FILTRO DE payment_status='completed'
+        purchases_query = Purchase.objects.filter(
+            # Condición 1: La compra es del usuario Y (es genérica O es de su terapia individual)
+            (Q(user=user) & (Q(terapia__isnull=True) | Q(terapia__tipo='individual', terapia__miembroterapia__usuario=user))) |
+            # Condición 2: La compra pertenece a una de las terapias compartidas del usuario
+            Q(terapia_id__in=shared_therapy_ids)
+        ).filter(
+            payment_status='completed' # <<< ¡¡¡ EL FILTRO ESENCIAL !!!
+        ).distinct().order_by('-purchase_date') # Ordenar y asegurar unicidad
+        # --- FIN: Consulta MODIFICADA ---
 
-        serializer = PurchaseReadSerializer(purchases, many=True)
+
+        # El serializer es el mismo, ahora solo recibe compras completadas
+        serializer = PurchaseReadSerializer(purchases_query, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
