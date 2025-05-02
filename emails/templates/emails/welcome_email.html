@@ -1,14 +1,12 @@
 {% extends "emails/base_email.html" %}
 
 {% block content %}
-    <div style="max-width: 600px; margin: 0 auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    
         <!-- Header con logo -->
-        <div style="text-align: center; padding: 20px 0;">
-            <img src="/backend/emails/svg/logo.svg" alt="Senti Logo" style="height: 60px; width: auto;" />
-        </div>
+
         
         <div style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 40px; margin-bottom: 30px;">
-            <h2 style="color: #3b82f6; margin-top: 0; font-size: 28px; font-weight: 600; text-align: center;">¡Bienvenid@ a Senti, {{ nombre }}!</h2>
+            <h2>¡Bienvenid@ a Senti, {{ nombre }}!</h2>
             
             <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Nos alegra que hayas decidido comenzar este viaje de bienestar emocional con nosotros. Tu decisión de priorizar tu salud mental es el primer paso hacia una vida más plena y equilibrada.</p>
             
@@ -94,13 +92,6 @@
         </div>
         
         <!-- Footer -->
-        <div style="text-align: center; padding: 20px 0; color: #94a3b8; font-size: 14px;">
-            <p>© 2025 Senti. Todos los derechos reservados.</p>
-            <div style="margin-top: 10px;">
-                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Política de Privacidad</a>
-                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Términos de Servicio</a>
-                <a href="#" style="color: #3b82f6; margin: 0 10px; text-decoration: none;">Contacto</a>
-            </div>
-        </div>
-    </div>
+
+    
 {% endblock %}
