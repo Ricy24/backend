@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ subject }}</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&family=Lora:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap');
         
         :root {
-            --primary-color: #3a7bd5;
-            --secondary-color: #00d2ff;
-            --accent-color: #6366f1;
-            --text-primary: #2d3748;
-            --text-secondary: #4a5568;
-            --text-light: #718096;
+            --primary-color: #3b82f6;
+            --secondary-color: #0ea5e9;
+            --text-primary: #0f172a;
+            --text-secondary: #4b5563;
+            --text-light: #64748b;
             --bg-light: #f8fafc;
             --bg-white: #ffffff;
             --border-color: #e2e8f0;
@@ -60,22 +59,10 @@
         .header {
             text-align: center;
             padding: 35px 20px 40px;
-            background: linear-gradient(135deg, #3a7bd5, #00d2ff, #6366f1);
+            background: linear-gradient(135deg, #3b82f6, #0ea5e9);
             color: var(--bg-white);
             position: relative;
             overflow: hidden;
-        }
-        
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url("/api/placeholder/600/200") center/cover no-repeat;
-            opacity: 0.1;
-            z-index: 0;
         }
         
         .header-content {
@@ -90,7 +77,6 @@
         .logo img {
             height: 70px;
             width: auto;
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
         }
         
         .header h1 {
@@ -99,7 +85,6 @@
             font-size: 32px;
             font-weight: 700;
             letter-spacing: 0.5px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         .header p {
@@ -108,7 +93,6 @@
             opacity: 0.95;
             font-weight: 300;
             font-style: italic;
-            font-family: 'Lora', serif;
         }
         
         .header-wave {
@@ -136,25 +120,12 @@
             color: var(--text-primary);
             line-height: 1.8;
             font-size: 15px;
-            position: relative;
             background-color: var(--bg-white);
-        }
-        
-        .content::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url("/api/placeholder/500/500") center/cover no-repeat;
-            opacity: 0.02;
-            pointer-events: none;
         }
         
         .content h2 {
             font-family: 'Montserrat', sans-serif;
-            color: #1e40af;
+            color: var(--primary-color);
             margin-top: 0;
             margin-bottom: 22px;
             font-weight: 600;
@@ -163,7 +134,7 @@
         
         .content h3 {
             font-family: 'Montserrat', sans-serif;
-            color: #3b82f6;
+            color: var(--primary-color);
             margin-top: 25px;
             margin-bottom: 15px;
             font-weight: 500;
@@ -175,24 +146,6 @@
             color: var(--text-secondary);
         }
         
-        .content ul, .content ol {
-            margin-bottom: 20px;
-            margin-left: 20px;
-        }
-        
-        .content li {
-            margin-bottom: 8px;
-        }
-        
-        .quote {
-            background-color: #f8f9fa;
-            border-left: 4px solid var(--primary-color);
-            padding: 15px 20px;
-            margin: 25px 0;
-            font-style: italic;
-            color: var(--text-secondary);
-        }
-        
         .button-container {
             text-align: center;
             margin: 30px 0;
@@ -200,213 +153,36 @@
         
         .button {
             display: inline-block;
-            padding: 13px 32px;
-            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            padding: 14px 32px;
+            background-color: var(--primary-color);
             color: var(--bg-white) !important;
             text-decoration: none;
-            border-radius: 50px;
+            border-radius: 30px;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 16px;
             text-align: center;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(58, 123, 213, 0.3);
-            position: relative;
-            overflow: hidden;
-            border: none;
-            cursor: pointer;
             font-family: 'Montserrat', sans-serif;
         }
         
         .button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(58, 123, 213, 0.4);
-        }
-        
-        .button::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
-            transform: translateX(-100%);
-            transition: transform 0.6s;
-        }
-        
-        .button:hover::after {
-            transform: translateX(100%);
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
         }
         
         .divider {
             height: 1px;
-            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
-            margin: 35px 0;
-        }
-        
-        .info-cards {
-            display: flex;
-            gap: 20px;
+            background: var(--border-color);
             margin: 30px 0;
-            flex-wrap: wrap;
-        }
-        
-        .info-card {
-            flex: 1;
-            min-width: 180px;
-            background-color: #f8fafc;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-            border: 1px solid #e2e8f0;
-            text-align: center;
-        }
-        
-        .info-card img {
-            width: 50px;
-            height: 50px;
-            margin-bottom: 15px;
-        }
-        
-        .info-card h4 {
-            font-family: 'Montserrat', sans-serif;
-            margin-bottom: 10px;
-            color: #3b82f6;
-            font-size: 16px;
-        }
-        
-        .info-card p {
-            font-size: 13px;
-            color: var(--text-light);
-            margin: 0;
-        }
-        
-        .testimonial {
-            background-color: #f0f9ff;
-            border-radius: 10px;
-            padding: 25px;
-            margin: 30px 0;
-            position: relative;
-            font-style: italic;
-            color: var(--text-secondary);
-        }
-        
-        .testimonial::before {
-            content: '"';
-            position: absolute;
-            top: 10px;
-            left: 15px;
-            font-size: 60px;
-            color: #bfdbfe;
-            font-family: Georgia, serif;
-            line-height: 1;
-            opacity: 0.7;
-        }
-        
-        .testimonial-content {
-            position: relative;
-            z-index: 1;
-            padding-left: 20px;
-        }
-        
-        .testimonial-author {
-            text-align: right;
-            margin-top: 10px;
-            font-style: normal;
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        
-        .social-links {
-            text-align: center;
-            padding: 25px 0;
-            background-color: #f8fafc;
-            border-top: 1px solid var(--border-color);
-        }
-        
-        .social-links h4 {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 14px;
-            color: var(--text-light);
-            margin-bottom: 15px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .social-icons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .social-icon {
-            display: inline-block;
-            width: 38px;
-            height: 38px;
-            background-color: #fff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 1px solid #edf2f7;
-        }
-        
-        .social-icon:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .social-icon img {
-            width: 20px;
-            height: 20px;
-            opacity: 0.8;
-            transition: opacity 0.3s;
-        }
-        
-        .social-icon:hover img {
-            opacity: 1;
-        }
-        
-        .contact-info {
-            margin: 15px 0;
-            text-align: center;
-            font-size: 14px;
-            color: var(--text-light);
-            line-height: 1.7;
-        }
-        
-        .contact-info a {
-            color: var(--primary-color);
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-        
-        .contact-info a:hover {
-            color: var(--accent-color);
-            text-decoration: underline;
         }
         
         .footer {
             text-align: center;
-            padding: 30px 20px;
-            font-size: 13px;
-            color: var(--text-light);
-            background-color: #1e293b;
-            color: #cbd5e1;
-            border-radius: 0 0 16px 16px;
-        }
-        
-        .footer-logo {
-            margin-bottom: 20px;
-        }
-        
-        .footer-logo img {
-            height: 40px;
-            opacity: 0.9;
+            padding: 25px 20px;
+            font-size: 14px;
+            color: #94a3b8;
+            background-color: #f8fafc;
+            border-top: 1px solid var(--border-color);
         }
         
         .footer p {
@@ -415,33 +191,19 @@
         }
         
         .footer a {
-            color: #93c5fd;
+            color: var(--primary-color);
             text-decoration: none;
+            margin: 0 10px;
             transition: color 0.3s;
         }
         
         .footer a:hover {
-            color: #bfdbfe;
+            color: var(--secondary-color);
             text-decoration: underline;
         }
         
         .footer-links {
             margin: 15px 0;
-        }
-        
-        .footer-links a {
-            display: inline-block;
-            margin: 0 10px;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .footer-divider {
-            height: 1px;
-            background: rgba(255,255,255,0.1);
-            margin: 20px auto;
-            width: 80%;
         }
         
         @media only screen and (max-width: 650px) {
@@ -469,11 +231,6 @@
                 font-size: 15px;
             }
             
-            .info-cards {
-                flex-direction: column;
-                gap: 15px;
-            }
-            
             .button {
                 padding: 12px 28px;
                 font-size: 14px;
@@ -484,16 +241,15 @@
 <body>
     <div class="container">
         <div class="pre-header">
-            <p>{{ preheader_text|default:"Descubre el bienestar que mereces con SentiBien" }}</p>
+            <p>{{ preheader_text|default:"Senti - Bienestar para tu mente y corazón" }}</p>
         </div>
         
         <div class="header">
             <div class="header-content">
                 <div class="logo">
-                    <!-- Reemplaza con el logo real cuando lo tengas -->
-                    <img src="/api/placeholder/150/70" alt="SentiBien Logo">
+                    <img src="/backend/emails/svg/logo.svg" alt="Senti Logo">
                 </div>
-                <h1>SentiBien</h1>
+                <h1>Senti</h1>
                 <p>Tu camino hacia el equilibrio emocional</p>
             </div>
             <div class="header-wave"></div>
@@ -508,74 +264,20 @@
             <!-- El contenido dinámico del correo se insertará aquí -->
             {% endblock %}
             
-            <div class="info-cards">
-                <div class="info-card">
-                    <img src="/api/placeholder/50/50" alt="Profesionales">
-                    <h4>Profesionales Expertos</h4>
-                    <p>Psicólogos certificados para atenderte con calidez y profesionalismo</p>
-                </div>
-                <div class="info-card">
-                    <img src="/api/placeholder/50/50" alt="Horarios">
-                    <h4>Horarios Flexibles</h4>
-                    <p>Sesiones que se adaptan a tu estilo de vida</p>
-                </div>
-            </div>
-            
-            <div class="testimonial">
-                <div class="testimonial-content">
-                    <p>SentiBien transformó mi perspectiva. Nunca pensé que podría sentirme tan empoderada y en paz conmigo misma.</p>
-                    <div class="testimonial-author">— María C.</div>
-                </div>
-            </div>
-            
             <div class="divider"></div>
             
             <div class="button-container">
-                <a href="https://www.sentibien.com" class="button">Descubre nuestros servicios</a>
-            </div>
-        </div>
-        
-        <div class="social-links">
-            <h4>Síguenos en redes sociales</h4>
-            <div class="social-icons">
-                <a href="https://facebook.com/" class="social-icon" title="Facebook">
-                    <img src="/api/placeholder/20/20" alt="Facebook">
-                </a>
-                <a href="https://instagram.com/" class="social-icon" title="Instagram">
-                    <img src="/api/placeholder/20/20" alt="Instagram">
-                </a>
-                <a href="https://linkedin.com/" class="social-icon" title="LinkedIn">
-                    <img src="/api/placeholder/20/20" alt="LinkedIn">
-                </a>
-                <a href="https://twitter.com/" class="social-icon" title="Twitter">
-                    <img src="/api/placeholder/20/20" alt="Twitter">
-                </a>
-            </div>
-            
-            <div class="contact-info">
-                <p><a href="mailto:sentinfo@gmail.com">sentinfo@gmail.com</a> | <a href="tel:+573000000000">+57 3239219404</a></p>
-                <p>Bogotá, Colombia</p>
+                <a href="https://app.senti.lat/dashboard" class="button">Ir a mi cuenta</a>
             </div>
         </div>
         
         <div class="footer">
-            <div class="footer-logo">
-                <img src="/api/placeholder/100/40" alt="SentiBien Logo">
-            </div>
-            
+            <p>&copy; {{ year|default:"2025" }} Senti Todos los derechos reservados.</p>
             <div class="footer-links">
-                <a href="https://www.sentibien.com/nosotros">Nosotros</a>
-                <a href="https://www.sentibien.com/servicios">Servicios</a>
-                <a href="https://www.sentibien.com/blog">Blog</a>
-                <a href="https://www.sentibien.com/contacto">Contacto</a>
+                <a href="https://www.senti.lat/politica-privacidad">Política de Privacidad</a>
+                <a href="https://www.senti.lat/terminos-condiciones">Términos de Servicio</a>
+                <a href="https://www.senti.lat/nosotros">Contacto</a>
             </div>
-            
-            <div class="footer-divider"></div>
-            
-            <p>&copy; {{ year }} SentiBien. Todos los derechos reservados.</p>
-            <p><a href="https://www.sentibien.com/politica-privacidad">Política de Privacidad</a> | <a href="https://www.sentibien.com/terminos-condiciones">Términos y Condiciones</a></p>
-            <p><a href="https://www.sentibien.com/cancelar-suscripcion">Cancelar suscripción</a> | <a href="https://www.sentibien.com/preferencias">Gestionar preferencias</a></p>
-            <p>Si no esperabas este correo, por favor ignóralo o contáctanos.</p>
         </div>
     </div>
 </body>
