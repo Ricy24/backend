@@ -3,7 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>{{ subject }}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap');
         
@@ -24,6 +36,10 @@
             box-sizing: border-box;
         }
         
+        html, body {
+            height: 100%;
+        }
+        
         body {
             font-family: 'Open Sans', Arial, sans-serif;
             background-color: var(--bg-light);
@@ -31,6 +47,33 @@
             padding: 20px;
             color: var(--text-primary);
             line-height: 1.6;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        
+        /* Estilos para clientes de correo */
+        .ReadMsgBody { width: 100%; }
+        .ExternalClass { width: 100%; }
+        .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div { line-height: 100%; }
+        
+        table {
+            border-spacing: 0;
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        
+        table td {
+            border-collapse: collapse;
+        }
+        
+        img {
+            -ms-interpolation-mode: bicubic;
+            display: block;
+            border: 0;
+            height: auto;
+            outline: none;
+            text-decoration: none;
+            max-width: 100%;
         }
         
         .container {
@@ -48,6 +91,10 @@
             padding: 8px 15px;
             text-align: center;
             border-bottom: 1px solid #e0f2fe;
+            font-size: 0;
+            display: none;
+            visibility: hidden;
+            mso-hide: all;
         }
         
         .pre-header p {
@@ -57,52 +104,35 @@
         }
         
         .header {
-            text-align: center;
-            padding: 35px 20px 40px;
-            background: linear-gradient(135deg, #3b82f6, #0ea5e9);
-            color: var(--bg-white);
-            position: relative;
-            overflow: hidden;
+            background-color: #3b82f6;
+            color: white;
+            padding: 20px;
         }
         
         .header-content {
-            position: relative;
-            z-index: 1;
+            display: table;
+            width: 100%;
         }
         
         .logo {
-            margin-bottom: 20px;
+            display: table-cell;
+            vertical-align: middle;
+            width: 30%;
         }
         
         .logo img {
-            height: 70px;
+            height: 50px;
             width: auto;
         }
         
-        .header h1 {
+        .title {
+            display: table-cell;
+            vertical-align: middle;
+            width: 70%;
+            text-align: right;
+            font-size: 24px;
+            font-weight: bold;
             font-family: 'Montserrat', sans-serif;
-            margin: 0;
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-        
-        .header p {
-            margin: 10px 0 0;
-            font-size: 17px;
-            opacity: 0.95;
-            font-weight: 300;
-            font-style: italic;
-        }
-        
-        .header-wave {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 15px;
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z' fill='%23fff' opacity='.25'%3E%3C/path%3E%3Cpath d='M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z' fill='%23fff' opacity='.5'%3E%3C/path%3E%3Cpath d='M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z' fill='%23fff' opacity='.75'%3E%3C/path%3E%3C/svg%3E") no-repeat;
-            background-size: cover;
         }
         
         .banner {
@@ -163,17 +193,16 @@
             text-align: center;
             transition: all 0.3s ease;
             font-family: 'Montserrat', sans-serif;
-        }
-        
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+            mso-padding-alt: 14px 32px;
         }
         
         .divider {
             height: 1px;
             background: var(--border-color);
             margin: 30px 0;
+            border: none;
+            border-top: 1px solid var(--border-color);
+            clear: both;
         }
         
         .footer {
@@ -206,6 +235,24 @@
             margin: 15px 0;
         }
         
+        /* Estilos para elementos adicionales comunes en emails */
+        ul {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        
+        .highlight-box {
+            background-color: #f0f9ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
         @media only screen and (max-width: 650px) {
             body {
                 padding: 10px;
@@ -213,72 +260,154 @@
             
             .container {
                 border-radius: 10px;
+                width: 100% !important;
+                max-width: 100% !important;
             }
             
             .content {
-                padding: 30px 25px;
+                padding: 30px 25px !important;
             }
             
             .header {
-                padding: 30px 15px 35px;
+                padding: 20px 15px !important;
             }
             
-            .header h1 {
-                font-size: 26px;
+            .header-content {
+                display: block;
             }
             
-            .header p {
-                font-size: 15px;
+            .logo, .title {
+                display: block;
+                width: 100%;
+                text-align: center;
+            }
+            
+            .logo {
+                margin-bottom: 10px;
+            }
+            
+            .banner {
+                padding: 15px 20px !important;
             }
             
             .button {
                 padding: 12px 28px;
                 font-size: 14px;
+                display: block;
+                width: 80%;
+                margin: 0 auto;
+            }
+        }
+        
+        @media only screen and (max-width: 480px) {
+            .content {
+                padding: 25px 15px !important;
+            }
+            
+            .banner {
+                padding: 15px !important;
+                font-size: 13px !important;
+            }
+            
+            .footer {
+                padding: 20px 15px !important;
+            }
+            
+            .button {
+                width: 100%;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="pre-header">
-            <p>{{ preheader_text|default:"Senti - Bienestar para tu mente y corazón" }}</p>
-        </div>
-        
-        <div class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <img src="/backend/emails/svg/logo.png" alt="Senti Logo">
-                </div>
-                <h1>Senti</h1>
-                <p>Tu camino hacia el equilibrio emocional</p>
-            </div>
-            <div class="header-wave"></div>
-        </div>
-        
-        <div class="banner">
-            🌿 Cuidamos tu bienestar mental tanto como tú cuidas de los demás
-        </div>
-        
-        <div class="content">
-            {% block content %}
-            <!-- El contenido dinámico del correo se insertará aquí -->
-            {% endblock %}
-            
-            <div class="divider"></div>
-            
-            <div class="button-container">
-                <a href="https://app.senti.lat/dashboard" class="button">Ir a mi cuenta</a>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p>&copy; {{ year|default:"2025" }} Senti Todos los derechos reservados.</p>
-            <div class="footer-links">
-                <a href="https://www.senti.lat/politica-privacidad">Política de Privacidad</a>
-                <a href="https://www.senti.lat/terminos-condiciones">Términos de Servicio</a>
-                <a href="https://www.senti.lat/nosotros">Contacto</a>
-            </div>
-        </div>
+    <!-- Preheader para vista previa en bandeja de entrada -->
+    <div class="pre-header" style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">
+        {{ preheader_text|default:"Senti - Bienestar para tu mente y corazón" }}
     </div>
+    
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="min-width: 100%; width: 100%;">
+        <tr>
+            <td align="center" valign="top">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);">
+                    <!-- Header -->
+                    <tr>
+                        <td class="header" style="background-color: #3b82f6; color: white; padding: 20px;">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" class="header-content">
+                                <tr>
+                                    <td class="logo" style="width: 30%;" align="left" valign="middle">
+                                        <img src="https://res.cloudinary.com/dpc55pnfh/image/upload/v1746477864/LOGO-removebg-preview_mfgset.png" alt="Senti Logo" style="height: 50px; width: auto; display: block;">
+                                    </td>
+                                    <td class="title" style="width: 70%; text-align: right; font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: bold;" align="right" valign="middle">
+                                        Senti
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Banner -->
+                    <tr>
+                        <td class="banner" style="padding: 15px 40px; background-color: #e6f7ff; text-align: center; font-family: 'Montserrat', sans-serif; font-size: 14px; color: #0369a1; border-bottom: 1px dashed #bae6fd;">
+                            🌿 Cuidamos tu bienestar mental tanto como tú cuidas de los demás
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td class="content" style="padding: 40px 45px; color: #0f172a; line-height: 1.8; font-size: 15px; background-color: #ffffff;">
+                            {% block content %}
+                            <!-- El contenido dinámico del correo se insertará aquí -->
+                            {% endblock %}
+                            
+                            <div class="divider" style="height: 1px; background: #e2e8f0; margin: 30px 0; border: none; border-top: 1px solid #e2e8f0; clear: both;"></div>
+                            
+                            <div class="button-container" style="text-align: center; margin: 30px 0;">
+                                <!--[if mso]>
+                                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://app.senti.lat/dashboard" style="height:50px;v-text-anchor:middle;width:200px;" arcsize="60%" stroke="f" fillcolor="#3b82f6">
+                                <w:anchorlock/>
+                                <center>
+                                <![endif]-->
+                                <a href="https://app.senti.lat/dashboard" class="button" style="display: inline-block; padding: 14px 32px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 30px; font-weight: 600; font-size: 16px; text-align: center; font-family: 'Montserrat', sans-serif; mso-padding-alt: 14px 32px;">
+                                    Ir a mi cuenta
+                                </a>
+                                <!--[if mso]>
+                                </center>
+                                </v:roundrect>
+                                <![endif]-->
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td class="footer" style="text-align: center; padding: 25px 20px; font-size: 14px; color: #94a3b8; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+                            <p style="margin: 6px 0; line-height: 1.7;">Síguenos en nuestras redes sociales:</p>
+                            
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td align="center" style="padding: 10px 0;">
+                                        <a href="https://facebook.com" style="color: #3b82f6; text-decoration: none; margin: 0 10px;">Facebook</a>
+                                        <a href="https://twitter.com" style="color: #3b82f6; text-decoration: none; margin: 0 10px;">Twitter</a>
+                                        <a href="https://instagram.com" style="color: #3b82f6; text-decoration: none; margin: 0 10px;">Instagram</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="font-size: 12px; color: #9ca3af; margin: 10px 0;">
+                                <a href="https://www.senti.lat/privacidad" style="color: #3b82f6; text-decoration: none;">Política de Privacidad</a> |
+                                <a href="https://www.senti.lat/terminos-y-condiciones" style="color: #3b82f6; text-decoration: none;">Términos de Servicio</a>
+                            </p>
+                            
+                            <p style="font-size: 12px; color: #9ca3af; margin-top: 10px;">© 2025 Senti. Todos los derechos reservados.</p>
+                            
+                            <p style="font-size: 11px; color: #9ca3af; margin-top: 15px;">
+                                Si no deseas recibir más correos, puedes <a href="#" style="color: #3b82f6; text-decoration: none;">cancelar tu suscripción</a>.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

@@ -1,97 +1,49 @@
 {% extends "emails/base_email.html" %}
 
 {% block content %}
-    
-        <!-- Header con logo -->
+<div style="text-align: center; padding: 20px;">
+    <h2 style="color: #3b82f6; font-size: 24px; font-weight: bold;">¡Bienvenido a Senti!</h2>
+    <p style="color: #4b5563; font-size: 16px;">Hola {{ nombre }},</p>
+    <p style="color: #4b5563; font-size: 16px; line-height: 1.8;">
+        Nos alegra que hayas decidido unirte a nuestra comunidad. En Senti, estamos comprometidos con tu bienestar emocional y mental. Nuestro objetivo es proporcionarte las herramientas y el apoyo necesario para que alcances una vida más equilibrada y plena.
+    </p>
 
-        
-        <div style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 40px; margin-bottom: 30px;">
-            <h2>¡Bienvenid@ a Senti, {{ nombre }}!</h2>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Nos alegra que hayas decidido comenzar este viaje de bienestar emocional con nosotros. Tu decisión de priorizar tu salud mental es el primer paso hacia una vida más plena y equilibrada.</p>
-            
-            <!-- Caja de bienvenida mejorada -->
-            <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border-radius: 14px; padding: 30px; margin: 30px 0; border-left: 5px solid #0ea5e9;">
-                <h3 style="color: #0284c7; margin-top: 0; font-size: 20px;">Tu cuenta ha sido activada correctamente</h3>
-                <p style="color: #334155; margin-bottom: 20px;">Ya puedes acceder a todos nuestros servicios y comenzar a explorar las herramientas que hemos preparado especialmente para ti.</p>
-                
-                <div style="margin-left: 10px; margin-bottom: 25px; color: #4b5563;">
-                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                        <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                            <span style="color: white; font-size: 12px;">✓</span>
-                        </div>
-                        <span style="font-size: 15px;">Agenda tus sesiones con nuestros psicólogos profesionales</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                        <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                            <span style="color: white; font-size: 12px;">✓</span>
-                        </div>
-                        <span style="font-size: 15px;">Accede a recursos exclusivos para tu bienestar emocional</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                        <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                            <span style="color: white; font-size: 12px;">✓</span>
-                        </div>
-                        <span style="font-size: 15px;">Participa en talleres y grupos de apoyo</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #0ea5e9; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                            <span style="color: white; font-size: 12px;">✓</span>
-                        </div>
-                        <span style="font-size: 15px;">Realiza evaluaciones personalizadas</span>
-                    </div>
-                </div>
-            </div>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Sabemos que cada persona es única, por eso hemos diseñado un espacio donde encontrarás diferentes recursos adaptados a tus necesidades específicas.</p>
-            
-            <!-- Tarjetas informativas mejoradas -->
-            <div style="display: flex; gap: 20px; margin: 30px 0;">
-                <div style="flex: 1; background-color: #f8fafc; border-radius: 12px; padding: 25px; text-align: center; transition: transform 0.3s; border: 1px solid #e2e8f0;">
-                    <div style="background-color: #dbeafe; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#3b82f6"/>
-                        </svg>
-                    </div>
-                    <h4 style="color: #0f172a; font-size: 18px; margin-bottom: 10px;">Completa tu primer reto</h4>
-                    <p style="color: #64748b; font-size: 14px; line-height: 1.5;">Personaliza tu experiencia para recibir recomendaciones más precisas</p>
-                </div>
-                <div style="flex: 1; background-color: #f8fafc; border-radius: 12px; padding: 25px; text-align: center; transition: transform 0.3s; border: 1px solid #e2e8f0;">
-                    <div style="background-color: #dbeafe; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9 11H7V13H9V11ZM13 11H11V13H13V11ZM17 11H15V13H17V11ZM19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V9H19V20Z" fill="#3b82f6"/>
-                        </svg>
-                    </div>
-                    <h4 style="color: #0f172a; font-size: 18px; margin-bottom: 10px;">Agenda tu primera cita</h4>
-                    <p style="color: #64748b; font-size: 14px; line-height: 1.5;">El primer paso para comenzar tu proceso terapéutico</p>
-                </div>
-            </div>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; text-align: center;">Tu dashboard personal te espera con todas las herramientas necesarias para comenzar:</p>
-            
-            <!-- Botón mejorado -->
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{{ dashboard_url }}" style="background-color: #3b82f6; color: white; font-weight: 600; padding: 14px 32px; border-radius: 30px; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s;">Acceder a mi Dashboard</a>
-            </div>
-            
-            <!-- Testimonio mejorado -->
-            <div style="background-color: #eff6ff; border-radius: 12px; padding: 30px; margin: 30px 0; position: relative;">
-                <div style="position: absolute; top: -15px; left: 30px; font-size: 40px; color: #3b82f6; opacity: 0.4;">❝</div>
-                <p style="color: #0f172a; font-size: 16px; line-height: 1.6; font-style: italic; text-align: center; margin: 0; padding: 15px;">
-                    "El mejor momento para comenzar a cuidar tu salud mental fue hace tiempo. El segundo mejor momento es ahora."
-                </p>
-            </div>
-            
-            <hr style="border: none; height: 1px; background-color: #e2e8f0; margin: 30px 0;" />
-            
-            <h3 style="color: #0f172a; font-size: 20px;">¿Necesitas ayuda para comenzar?</h3>
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Nuestro equipo está listo para asistirte en cada paso del camino. Si tienes alguna pregunta o inquietud, no dudes en responder a este correo o contactarnos directamente.</p>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-top: 30px; text-align: center;">¡Bienvenid@ a tu nueva etapa de bienestar!</p>
-            <p style="color: #4b5563; font-size: 16px; font-weight: 600; text-align: center;">El equipo de Senti</p>
-        </div>
-        
-        <!-- Footer -->
+    <div style="background-color: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h3 style="color: #0284c7; font-size: 20px; font-weight: bold;">¿Qué encontrarás en Senti?</h3>
+        <ul style="list-style: none; padding: 0; text-align: left;">
+            <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                <span style="color: #3b82f6; font-size: 20px; margin-right: 10px;">✔️</span>
+                <span style="color: #4b5563; font-size: 16px;">Sesiones personalizadas con psicólogos expertos</span>
+            </li>
+            <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                <span style="color: #3b82f6; font-size: 20px; margin-right: 10px;">✔️</span>
+                <span style="color: #4b5563; font-size: 16px;">Recursos exclusivos para tu bienestar emocional</span>
+            </li>
+            <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                <span style="color: #3b82f6; font-size: 20px; margin-right: 10px;">✔️</span>
+                <span style="color: #4b5563; font-size: 16px;">Talleres y actividades grupales</span>
+            </li>
+            <li style="display: flex; align-items: center;">
+                <span style="color: #3b82f6; font-size: 20px; margin-right: 10px;">✔️</span>
+                <span style="color: #4b5563; font-size: 16px;">Evaluaciones y seguimientos personalizados</span>
+            </li>
+        </ul>
+    </div>
 
-    
+    <p style="color: #4b5563; font-size: 16px; line-height: 1.8;">
+        Estamos aquí para acompañarte en cada paso de tu camino hacia una vida más plena y equilibrada. No dudes en explorar todas las herramientas y recursos que hemos preparado especialmente para ti.
+    </p>
+
+    <div style="margin: 30px 0;">
+        <a href="{{ dashboard_url }}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-size: 16px; font-weight: bold;">Ir a mi Dashboard</a>
+    </div>
+
+    <div style="background-color: #e6f7ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h3 style="color: #0284c7; font-size: 20px; font-weight: bold;">Testimonios de nuestra comunidad</h3>
+        <p style="color: #4b5563; font-size: 16px; font-style: italic; line-height: 1.8;">
+            "Gracias a Senti, he aprendido a manejar mi ansiedad y a encontrar un equilibrio en mi vida. Recomiendo esta plataforma a todos los que buscan mejorar su bienestar emocional."
+        </p>
+        <p style="color: #4b5563; font-size: 16px; font-weight: bold; text-align: right;">- Usuario satisfecho</p>
+    </div>
+</div>
 {% endblock %}
