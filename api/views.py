@@ -33,7 +33,7 @@ from emails.utils import send_brevo_email
 from chat.models import ChatConfig
 from rest_framework.parsers import MultiPartParser, FormParser # Añadir parsers explícitamente
  
-
+from whatsapp.services import send_whatsapp_message
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -968,28 +968,58 @@ class GoogleLogin(APIView):
             email = idinfo['email']
             nombre = idinfo.get('name', '')
 
+            # Aquí es donde el usuario se crea o se obtiene
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={'nombre': nombre, 'tipo_cuenta': 'Google', 'is_new_user': True}
             )
             if created:
-                user.set_unusable_password()
+                user.set_unusable_password() # Solo para usuarios nuevos
                 user.save()
-                # Enviar correo de bienvenida
+                # Enviar correo de bienvenida (tu código existente)
                 context = {
                     'nombre': user.nombre or user.email.split('@')[0],
                     'dashboard_url': f"{settings.FRONTEND_URL}/dashboard",
                     'year': timezone.now().year,
                 }
-                success = send_brevo_email(
+                email_success = send_brevo_email(
                     subject="¡Bienvenid@ a Senti!",
                     to_email=user.email,
                     template_name="welcome_email.html",
                     context=context
                 )
-                if not success:
+                if not email_success:
                     logger.warning(f"No se pudo enviar el correo de bienvenida a {user.email}")
 
+                # --- INICIO: Enviar mensaje de WhatsApp (SOLO SI ES NUEVO Y TIENE TELÉFONO) ---
+                if user.telefono: # Google a menudo no da el teléfono. Este campo podría estar vacío.
+                                  # El usuario podría necesitar añadirlo más tarde.
+                    phone_number_for_whatsapp = user.telefono # Ajusta si es necesario
+                    
+                    welcome_message_google = f"""¡Hola {user.nombre or user.email.split('@')[0]}! 👋 Gracias por unirte a Senti con tu cuenta de Google.
+
+Descubre un espacio para tu bienestar con:
+✨ Retos diarios que te inspirarán.
+👩‍⚕️ Psicólogos listos para escucharte.
+
+¡Recuerda que tu primera sesión de 30 minutos es GRATUITA! 🌟
+Explora y agenda: [https://app.senti.lat/dashboard]
+
+¡Bienvenid@ a la comunidad Senti!"""
+                    
+                    logger.info(f"Intentando enviar WhatsApp de bienvenida (Google Login) a {phone_number_for_whatsapp} para el usuario {user.email}")
+                    
+                    wa_success, wa_response = send_whatsapp_message(phone_number_for_whatsapp, welcome_message)
+                    
+                    if wa_success:
+                        logger.info(f"WhatsApp de bienvenida (Google Login) enviado exitosamente a {phone_number_for_whatsapp}. Respuesta: {wa_response}")
+                    else:
+                        logger.error(f"Error al enviar WhatsApp de bienvenida (Google Login) a {phone_number_for_whatsapp}. Error: {wa_response}")
+                else:
+                    logger.info(f"No se envió WhatsApp de bienvenida (Google Login) a {user.email} porque no se proporcionó/obtuvo número de teléfono.")
+                # --- FIN: Enviar mensaje de WhatsApp ---
+
+            # El resto de la lógica de login es para ambos (nuevos y existentes)
             refresh = RefreshToken.for_user(user)
 
             if token_invitacion:
@@ -999,12 +1029,14 @@ class GoogleLogin(APIView):
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
                 'is_psychologist': user.is_psychologist,
-                'is_new_user': user.is_new_user  # Añadir esto para el frontend
+                'is_new_user': user.is_new_user 
             }, status=status.HTTP_200_OK)
         except ValueError as e:
-            logger.error(f"Error en Google Login: {str(e)}")
+            logger.error(f"Error en Google Login: {str(e)}", exc_info=True)
             return Response({'error': 'Token de Google inválido'}, status=status.HTTP_400_BAD_REQUEST)
-
+        except Exception as e: # Captura genérica para otros errores inesperados
+            logger.error(f"Error inesperado en GoogleLogin: {str(e)}", exc_info=True)
+            return Response({'error': 'Ocurrió un error interno inesperado.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def procesar_invitacion(self, user, token):
         try:
             invitacion = InvitacionTerapia.objects.get(token=token, usado=False)
@@ -1032,23 +1064,56 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                user = serializer.save()
+                user = serializer.save() # El usuario se crea aquí
                 refresh = RefreshToken.for_user(user)
 
-                # Enviar correo de bienvenida
+                # Enviar correo de bienvenida (tu código existente)
                 context = {
                     'nombre': user.nombre or user.email.split('@')[0],
                     'dashboard_url': f"{settings.FRONTEND_URL}/dashboard",
                     'year': timezone.now().year,
                 }
-                success = send_brevo_email(
+                email_success = send_brevo_email(
                     subject="¡Bienvenid@ a Senti!",
                     to_email=user.email,
                     template_name="welcome_email.html",
                     context=context
                 )
-                if not success:
+                if not email_success:
                     logger.warning(f"No se pudo enviar el correo de bienvenida a {user.email}")
+
+                # --- INICIO: Enviar mensaje de WhatsApp ---
+                if user.telefono: # Solo si el usuario proporcionó un teléfono
+                    # Asegúrate que el formato del user.telefono sea el esperado por Baileys (ej: "521XXXXXXXXXX")
+                    # Puede que necesites limpiar/formatear el número aquí si no lo está ya
+                    phone_number_for_whatsapp = user.telefono # Ajusta si es necesario
+                    
+                    welcome_message = f"""¡Hola {user.nombre or user.email.split('@')[0]}! 🎉 ¡Te damos la bienvenida oficial a Senti!
+
+Prepárate para transformar tu bienestar. En Senti te esperan:
+🔹 Retos diarios que te motivarán.
+🔹 Acceso a psicólogos expertos.
+
+🚀 ¿Listo para empezar? ¡Tu primera consulta de 30 minutos con un psicólogo es GRATIS!
+Es una gran oportunidad para conocernos y explorar cómo podemos ayudarte.
+
+Reserva tu sesión gratuita aquí: [https://app.senti.lat/dashboard]
+
+¡Estamos aquí para ti!
+Senti."""
+                    
+                    logger.info(f"Intentando enviar WhatsApp de bienvenida a {phone_number_for_whatsapp} para el usuario {user.email}")
+                    
+                    # Llamada SÍNCRONA (considerar asíncrona para producción)
+                    wa_success, wa_response = send_whatsapp_message(phone_number_for_whatsapp, welcome_message)
+                    
+                    if wa_success:
+                        logger.info(f"WhatsApp de bienvenida enviado exitosamente a {phone_number_for_whatsapp}. Respuesta: {wa_response}")
+                    else:
+                        logger.error(f"Error al enviar WhatsApp de bienvenida a {phone_number_for_whatsapp}. Error: {wa_response}")
+                else:
+                    logger.info(f"No se envió WhatsApp de bienvenida a {user.email} porque no se proporcionó número de teléfono.")
+                # --- FIN: Enviar mensaje de WhatsApp ---
 
                 if token_invitacion:
                     self.procesar_invitacion(user, token_invitacion)
@@ -1059,12 +1124,12 @@ class RegisterView(APIView):
                     'is_psychologist': user.is_psychologist
                 }, status=status.HTTP_201_CREATED)
             except Exception as e:
-                logger.error(f"Error en RegisterView: {str(e)}")
-                if "email" in str(e).lower():
+                logger.error(f"Error en RegisterView: {str(e)}", exc_info=True) # exc_info=True es bueno para el traceback
+                if "email" in str(e).lower() and "ya existe" in str(e).lower(): # Ser más específico
                     return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
                 return Response({'error': 'Error al crear el usuario'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    
     def procesar_invitacion(self, user, token):
         try:
             invitacion = InvitacionTerapia.objects.get(token=token, usado=False)

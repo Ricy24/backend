@@ -20,6 +20,7 @@ import tempfile
 import os
 from django.shortcuts import get_object_or_404
 
+import threading
 from django.db.models import Count
 from django.http import HttpResponse
 from reportlab.lib import colors
@@ -31,14 +32,45 @@ logger = logging.getLogger(__name__)
 
   # --- Carga del Modelo Whisper ---
   # Puedes definir el tamaño en settings.py o aquí directamente
-WHISPER_MODEL_SIZE = getattr(settings, 'WHISPER_MODEL_SIZE', 'base') # Ejemplo: 'base', 'small', 'medium'
-whisper_model = None
-try:
-      logger.info(f"Cargando modelo Whisper ({WHISPER_MODEL_SIZE})...")
-      whisper_model = whisper.load_model(WHISPER_MODEL_SIZE)
-      logger.info(f"Modelo Whisper '{WHISPER_MODEL_SIZE}' cargado exitosamente.")
-except Exception as e:
-      logger.error(f"Error crítico al cargar el modelo Whisper ({WHISPER_MODEL_SIZE}): {e}", exc_info=True)
+WHISPER_MODEL_SIZE = getattr(settings, 'WHISPER_MODEL_SIZE', 'base')
+
+# --- Variable global para almacenar el modelo una vez cargado (dentro de cada proceso) ---
+_whisper_model_instance = None
+_whisper_model_load_lock = threading.Lock() # Para evitar race conditions si múltiples hilos intentan cargar
+
+
+
+
+# --- FUNCIÓN PARA OBTENER/CARGAR EL MODELO ---
+def get_whisper_model():
+    """
+    Obtiene la instancia global del modelo Whisper, cargándola si es necesario.
+    Esta función es segura para hilos (thread-safe).
+    """
+    global _whisper_model_instance
+    # Doble verificación para eficiencia (evita adquirir el lock innecesariamente)
+    if _whisper_model_instance is None:
+        with _whisper_model_load_lock:
+            # Segunda verificación dentro del lock por si otro hilo ya lo cargó mientras esperábamos
+            if _whisper_model_instance is None:
+                logger.info(f"Iniciando carga del modelo Whisper ({WHISPER_MODEL_SIZE})...")
+                try:
+                    # Carga real del modelo
+                    _whisper_model_instance = whisper.load_model(WHISPER_MODEL_SIZE)
+                    logger.info(f"Modelo Whisper '{WHISPER_MODEL_SIZE}' cargado exitosamente en este proceso.")
+                except MemoryError as me:
+                    logger.error(f"¡MemoryError! No hay suficiente memoria para cargar el modelo Whisper '{WHISPER_MODEL_SIZE}'. {me}")
+                    # Mantener _whisper_model_instance como None
+                    _whisper_model_instance = None # Asegurarse que quede None
+                    # Podrías lanzar una excepción específica o simplemente devolver None
+                    # raise me # Relanzar si quieres que el error se propague inmediatamente
+                except Exception as e:
+                    logger.error(f"Error crítico durante la carga del modelo Whisper ({WHISPER_MODEL_SIZE}): {e}", exc_info=True)
+                    _whisper_model_instance = None # Asegurar que quede None si falla
+                    # raise e # Relanzar si quieres que el error se propague
+
+    # Devolver la instancia (puede ser None si la carga falló)
+    return _whisper_model_instance
 
 
 # Inicializar Groq con la API key desde settings
@@ -546,15 +578,33 @@ def export_day_pdf(request, date_str):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def transcribe_audio_view(request):
-      global whisper_model # Accede al modelo cargado globalmente
-
-      if whisper_model is None:
-          logger.error("Intento de transcripción fallido: El modelo Whisper no está cargado.")
+      # Intenta obtener el modelo usando la función lazy loader
+      try:
+          model = get_whisper_model()
+      except MemoryError: # Capturar si get_whisper_model relanza MemoryError
+          logger.error("Fallo en transcripción debido a MemoryError al cargar modelo.")
           return Response(
-              {'error': 'Servicio de transcripción no disponible temporalmente.'},
+              {'error': 'Servicio no disponible temporalmente debido a recursos limitados.'},
+              status=status.HTTP_503_SERVICE_UNAVAILABLE
+          )
+      except Exception as load_err: # Capturar otros errores de carga si get_whisper_model los relanza
+          logger.error(f"Fallo en transcripción debido a error al cargar modelo: {load_err}", exc_info=True)
+          return Response(
+              {'error': 'Error interno al inicializar el servicio de transcripción.'},
+              status=status.HTTP_500_INTERNAL_SERVER_ERROR
+          )
+
+
+      # Verifica si el modelo se cargó correctamente (si get_whisper_model devuelve None)
+      if model is None:
+          logger.error("Intento de transcripción fallido: El modelo Whisper no pudo ser cargado (probablemente MemoryError anterior).")
+          # El log dentro de get_whisper_model debería haber detallado el error.
+          return Response(
+              {'error': 'Servicio de transcripción no disponible temporalmente (error de inicialización).'},
               status=status.HTTP_503_SERVICE_UNAVAILABLE
           )
 
+      # --- Resto de tu lógica de transcripción (sin cambios) ---
       if 'audio' not in request.FILES:
           return Response(
               {'error': 'No se encontró archivo de audio en la solicitud.'},
@@ -564,10 +614,12 @@ def transcribe_audio_view(request):
       audio_file = request.FILES['audio']
       logger.info(f"Recibido archivo de audio: {audio_file.name}, tamaño: {audio_file.size} bytes")
 
-      # Usar un archivo temporal seguro
+      temp_audio_path = None # Definir fuera del try para el finally
       try:
+          # Usar un archivo temporal seguro
+          # Necesitamos importar threading al principio del archivo
+          import threading
           with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio_file:
-              # Guardar el contenido del archivo subido al archivo temporal
               for chunk in audio_file.chunks():
                   temp_audio_file.write(chunk)
               temp_audio_path = temp_audio_file.name
@@ -576,27 +628,24 @@ def transcribe_audio_view(request):
 
           # Transcribir usando Whisper
           logger.info("Iniciando transcripción con Whisper...")
-          result = whisper_model.transcribe(temp_audio_path, language="es", fp16=False) # fp16=False puede ser más compatible
+          # Usar la instancia 'model' obtenida de get_whisper_model()
+          result = model.transcribe(temp_audio_path, language="es", fp16=False)
           transcript = result['text']
           logger.info("Transcripción completada.")
-
-          # Limpiar el archivo temporal
-          os.remove(temp_audio_path)
-          logger.info(f"Archivo temporal eliminado: {temp_audio_path}")
 
           return Response({'transcript': transcript}, status=status.HTTP_200_OK)
 
       except Exception as e:
           logger.error(f"Error durante la transcripción: {e}", exc_info=True)
-          # Asegurarse de eliminar el archivo temporal si aún existe y hubo un error
-          if 'temp_audio_path' in locals() and os.path.exists(temp_audio_path):
-              try:
-                  os.remove(temp_audio_path)
-                  logger.info(f"Archivo temporal eliminado después de error: {temp_audio_path}")
-              except OSError as rm_err:
-                  logger.error(f"Error al eliminar archivo temporal después de error: {rm_err}")
-
           return Response(
               {'error': f'Error al procesar el audio: {str(e)}'},
               status=status.HTTP_500_INTERNAL_SERVER_ERROR
           )
+      finally:
+          # Asegurarse de limpiar el archivo temporal si se creó
+          if temp_audio_path and os.path.exists(temp_audio_path):
+              try:
+                  os.remove(temp_audio_path)
+                  logger.info(f"Archivo temporal eliminado: {temp_audio_path}")
+              except OSError as rm_err:
+                  logger.error(f"Error al eliminar archivo temporal: {rm_err}")

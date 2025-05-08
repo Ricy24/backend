@@ -35,6 +35,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://senti.lat",
     "https://api.senti.lat",
     "http://localhost:8000",
+    "http://localhost:5174",
 ]
 
 # Configuración de CORS
@@ -70,6 +71,8 @@ INSTALLED_APPS = [
     'emails',
     'chat',
     'multiselectfield',
+    'whatsapp',
+    'celery',
 ]
 
 SITE_ID = 1
@@ -188,7 +191,8 @@ CORS_ALLOW_METHODS = [
 # Configuración de CORS
 CORS_ALLOWED_ORIGINS = [
     "https://app.senti.lat", 
-    "https://senti.lat", # Frontend en producción
+    "https://senti.lat",
+     "http://localhost:5174", # Frontend en producción
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales
@@ -362,8 +366,9 @@ JITSI_MEET_BASE_URL = 'https://meet.jit.si'  # URL del servidor público de Jits
 FILES_ROOT = os.path.join(BASE_DIR, 'uploads')
 FILES_URL = '/uploads/'
 
-
-
+#Baileys expone ese puerto en tu PC ENVIO DE MENSAJES WHATSAPP
+BAILEYS_SERVICE_URL = config('BAILEYS_SERVICE_URL_ENV', default="http://localhost:3001/send-message")
+BAILEYS_API_KEY = 'MB9qn9vRJdRVXbu3vlFS'
 
 
 # ==============================================================================

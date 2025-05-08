@@ -16,8 +16,9 @@ import logging
 import uuid
 from django.conf import settings
 from datetime import timedelta, datetime
+from whatsapp.services import send_whatsapp_message 
+from .tasks import send_session_reminder_whatsapp_task
 
-logger = logging.getLogger(__name__)
 
 # CONFIGURACIÓN (Mover a settings.py si es posible)
 CANCELATION_POLICY_HOURS = getattr(settings, 'CANCELATION_POLICY_HOURS', 2)
@@ -25,6 +26,10 @@ SESSION_DURATION_MINUTES = getattr(settings, 'SESSION_DURATION_MINUTES', 60)
 FREE_SESSION_DURATION_MINUTES = getattr(settings, 'FREE_SESSION_DURATION_MINUTES', 30)
 FREE_SESSION_TITLE = getattr(settings, 'FREE_SESSION_TITLE', "Sesión Gratuita de Terapia")
 
+REMINDER_MINUTES_BEFORE = 5
+REMINDER_MINUTES_BEFORE_TASK = 5 # O el valor que necesites para la tarea
+
+logger = logging.getLogger(__name__)
 
 class CalendarEventListView(APIView):
     """
@@ -458,7 +463,7 @@ class CalendarEventCreateView(APIView):
                         'psychologist_name': psychologist_name,
                         'patient_name': user_name,
                         'patient_email': user.email,
-                        'dashboard_url': getattr(settings, 'FRONTEND_URL', 'https://tuplataforma.com') + '/dashboard/psychologist', # Ajustar URL
+                        'dashboard_url': getattr(settings, 'FRONTEND_URL', 'https://app.senti.lat') + '/dashboard/psychologist', # Ajustar URL
                     })
                     send_brevo_email(
                         subject=f"Nueva Sesión {session_type_str} Programada",
@@ -472,6 +477,106 @@ class CalendarEventCreateView(APIView):
                     # No fallar la creación del evento si el correo falla, solo loguear
                     logger.error(f"Error al enviar correos de confirmación para evento {event.event_id}: {str(e)}", exc_info=True)
             # --- Fin Generar Jitsi y Enviar Correos ---
+
+            # --- INICIO: Notificaciones WhatsApp ---
+            # Esta sección va DESPUÉS de que el 'event' se ha creado y guardado
+            # y después (o en paralelo) del envío de correos.
+
+            if event.type == 'therapy' and event.psychologist: # Solo para sesiones de terapia con psicólogo
+                patient = event.user
+                psychologist_obj = event.psychologist # Renombrado para evitar conflicto con la variable psychologist de más arriba
+                session_time_local = event.start_time.astimezone(timezone.get_current_timezone())
+
+                # Reutilizamos is_free_session_request que ya calculaste al principio de la vista
+                # is_truly_free_session = is_free_session_request # Esta variable ya la tienes definida arriba
+                
+                session_type_display = "Gratuita de Bienvenida" if is_free_session_request else "Regular"
+                
+                formatted_date = session_time_local.strftime("%d de %B de %Y")
+                formatted_time = session_time_local.strftime("%I:%M %p %Z")
+
+                # --- 1. Mensaje de Confirmación para el Paciente ---
+                if patient.telefono: # Asegúrate que tu modelo Usuario (patient) tenga el campo 'telefono'
+                    patient_name_display = patient.nombre or patient.email.split('@')[0]
+                    psychologist_name_display = psychologist_obj.nombre or psychologist_obj.email.split('@')[0]
+                    
+                    confirmation_message_patient = f"""¡Hola {patient_name_display}! 👋
+Tu sesión de Terapia {session_type_display} con la psicóloga {psychologist_name_display} ha sido confirmada.
+
+🗓️ Fecha: {formatted_date}
+⏰ Hora: {formatted_time}
+
+Recibirás un recordatorio con el enlace para unirte {REMINDER_MINUTES_BEFORE} minutos antes de la sesión.
+¡Te esperamos en Senti!"""
+                    
+                    wa_success_patient, wa_resp_patient = send_whatsapp_message(patient.telefono, confirmation_message_patient)
+                    if wa_success_patient:
+                        logger.info(f"WhatsApp de confirmación de sesión enviado a paciente {patient.email} (Tel: {patient.telefono})")
+                    else:
+                        logger.error(f"Error enviando WhatsApp de confirmación a paciente {patient.email} (Tel: {patient.telefono}): {wa_resp_patient}")
+
+                # --- 2. Mensaje de Confirmación para la Psicóloga ---
+                if psychologist_obj.telefono: # Asegúrate que tu modelo Usuario (psychologist_obj) tenga 'telefono'
+                    patient_name_display = patient.nombre or patient.email.split('@')[0]
+                    psychologist_name_display = psychologist_obj.nombre or psychologist_obj.email.split('@')[0]
+
+                    confirmation_message_psychologist = f"""¡Hola Psic. {psychologist_name_display}! 🔔
+Tienes una nueva sesión de Terapia {session_type_display} agendada:
+
+👤 Paciente: {patient_name_display} ({patient.email})
+🗓️ Fecha: {formatted_date}
+⏰ Hora: {formatted_time}
+
+Se enviará un recordatorio automático al paciente con el enlace {REMINDER_MINUTES_BEFORE} minutos antes.
+Plataforma Senti."""
+                    wa_success_psychologist, wa_resp_psychologist = send_whatsapp_message(psychologist_obj.telefono, confirmation_message_psychologist)
+                    if wa_success_psychologist:
+                        logger.info(f"WhatsApp de confirmación de sesión enviado a psicóloga {psychologist_obj.email} (Tel: {psychologist_obj.telefono})")
+                    else:
+                        logger.error(f"Error enviando WhatsApp de confirmación a psicóloga {psychologist_obj.email} (Tel: {psychologist_obj.telefono}): {wa_resp_psychologist}")
+
+                # --- 3. Programar Tarea de Recordatorio (requiere Celery) ---
+                reminder_time_utc = event.start_time - timedelta(minutes=REMINDER_MINUTES_BEFORE)
+
+                if reminder_time_utc > timezone.now():
+                    # DEBES IMPORTAR ESTA TAREA AL INICIO DEL ARCHIVO:
+                    # from google_calendar.tasks import send_session_reminder_whatsapp_task 
+                    # O la ruta correcta donde definas la tarea Celery.
+                    
+                    # Programar para el paciente
+                    if patient.telefono:
+                        logger.info(f"Programando recordatorio de WhatsApp para paciente {patient.email} (Evento ID: {event.id}) a las {reminder_time_utc.isoformat()}")
+                        # send_session_reminder_whatsapp_task.apply_async(
+                        #    args=[
+                        #        event.id, 
+                        #        patient.telefono, 
+                        #        patient.nombre or patient.email.split('@')[0], 
+                        #        "patient", 
+                        #        psychologist_obj.nombre or psychologist_obj.email.split('@')[0]
+                        #    ],
+                        #    eta=reminder_time_utc
+                        # )
+                        logger.warning(f"TAREA CELERY (recordatorio paciente para evento {event.id}) PENDIENTE DE DESCOMENTAR Y CONFIGURAR.")
+
+
+                    # Programar para la psicóloga (opcional)
+                    if psychologist_obj.telefono:
+                        logger.info(f"Programando recordatorio de WhatsApp para psicóloga {psychologist_obj.email} (Evento ID: {event.id}) a las {reminder_time_utc.isoformat()}")
+                        # send_session_reminder_whatsapp_task.apply_async(
+                        #    args=[
+                        #        event.id, 
+                        #        psychologist_obj.telefono, 
+                        #        psychologist_obj.nombre or psychologist_obj.email.split('@')[0], 
+                        #        "psychologist", 
+                        #        patient.nombre or patient.email.split('@')[0]
+                        #    ],
+                        #    eta=reminder_time_utc
+                        # )
+                        logger.warning(f"TAREA CELERY (recordatorio psicóloga para evento {event.id}) PENDIENTE DE DESCOMENTAR Y CONFIGURAR.")
+                else:
+                    logger.info(f"No se programó recordatorio para evento {event.id} porque la hora del recordatorio ya pasó.")
+
+            # --- FIN: Notificaciones WhatsApp ---
 
             # --- Preparar Respuesta Exitosa ---
             response_data = {
