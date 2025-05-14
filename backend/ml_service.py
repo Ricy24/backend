@@ -50,6 +50,7 @@ origins = [
     "https://app.senti.lat",
     "https://www.senti.lat",
     "http://localhost:3000",
+    "http://localhost:5174",
 ]
 logger.info(f"Configurando CORS para los orígenes: {origins}")
 app.add_middleware(
