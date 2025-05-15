@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'multiselectfield',
     'whatsapp',
     'celery',
+    'spotify_insights',
 ]
 
 SITE_ID = 1
@@ -192,7 +193,7 @@ CORS_ALLOW_METHODS = [
 CORS_ALLOWED_ORIGINS = [
     "https://app.senti.lat", 
     "https://senti.lat",
-     "http://localhost:5174", # Frontend en producción
+    "http://localhost:5174", # Frontend en producción
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales
@@ -425,3 +426,12 @@ CLOUDFLARE_R2_DEFAULT_ACL = config('CLOUDFLARE_R2_DEFAULT_ACL', default='private
 # ==============================================================================
 # Fin de la configuración R2
 # ==============================================================================z
+
+
+# --- NUEVO: Configuración para Spotify Wrapped ---
+SPOTIFY_CLIENT_ID = config('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET')
+# La REDIRECT_URI debe apuntar a tu backend, y al endpoint que crearemos para el callback.
+# Si tu frontend está en localhost:5174 y backend en localhost:8000:
+SPOTIFY_REDIRECT_URI = config('SPOTIFY_REDIRECT_URI', default=f'{PUBLIC_BACKEND_URL}/spotify/callback/')
+# --- FIN NUEVO ---

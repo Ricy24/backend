@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/emails/welcome/', views.SendWelcomeEmailView.as_view(), name='send_welcome_email'),
     path('api/emails/password-reset/request/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('api/emails/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('api/spotify/', include('spotify_insights.urls')),
 ]
 
 if settings.DEBUG:
