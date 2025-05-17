@@ -32,7 +32,9 @@ urlpatterns = [
     path('api/emails/password-reset/request/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('api/emails/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('api/spotify/', include('spotify_insights.urls')),
+    path(f'{settings.TELEGRAM_WEBHOOK_PATH.strip("/")}/', include('telegram_bot.urls')),
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

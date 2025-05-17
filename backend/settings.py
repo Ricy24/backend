@@ -25,7 +25,8 @@ PUBLIC_BACKEND_URL = config('PUBLIC_BACKEND_URL', default='http://localhost:8000
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
     default='localhost,127.0.0.1', # Default solo para desarrollo si no hay .env
-    cast=lambda v: [s.strip() for s in v.split(',')]
+    cast=lambda v: [s.strip() for s in v.split(',')],
+    
 )
 
 
@@ -36,6 +37,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://api.senti.lat",
     "http://localhost:8000",
     "http://localhost:5174",
+    
 ]
 
 # Configuración de CORS
@@ -74,6 +76,8 @@ INSTALLED_APPS = [
     'whatsapp',
     'celery',
     'spotify_insights',
+    'telegram_bot',
+    
 ]
 
 SITE_ID = 1
@@ -434,4 +438,67 @@ SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET')
 # La REDIRECT_URI debe apuntar a tu backend, y al endpoint que crearemos para el callback.
 # Si tu frontend está en localhost:5174 y backend en localhost:8000:
 SPOTIFY_REDIRECT_URI = config('SPOTIFY_REDIRECT_URI', default=f'{PUBLIC_BACKEND_URL}/spotify/callback/')
-# --- FIN NUEVO ---
+# --- FIN NUEVO ---}
+
+
+# ==============================================================================
+# TELEGRAM BOT SETTINGS (Opción A: TELEGRAM_WEBHOOK_PATH incluye el secreto)
+# ==============================================================================
+TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default=None)
+if not TELEGRAM_BOT_TOKEN:
+    # Es importante que esto sea un error visible o incluso detenga el inicio si el bot es crítico.
+    print("¡ADVERTENCIA CRÍTICA! La variable de entorno TELEGRAM_BOT_TOKEN no está definida. El bot de Telegram no funcionará.")
+    # Considera lanzar un error si es absolutamente necesario para el arranque:
+    # from django.core.exceptions import ImproperlyConfigured
+    # raise ImproperlyConfigured("TELEGRAM_BOT_TOKEN es requerido y no está definido en el entorno.")
+
+# El secreto del webhook que usas como parte del path.
+TELEGRAM_WEBHOOK_SECRET = config('TELEGRAM_WEBHOOK_SECRET', default=None)
+if not TELEGRAM_WEBHOOK_SECRET:
+    print("¡ADVERTENCIA CRÍTICA! La variable de entorno TELEGRAM_WEBHOOK_SECRET no está definida. La URL del webhook de Telegram no será segura/única.")
+    # Podrías asignar un default menos seguro aquí si es solo para desarrollo, pero no es ideal:
+    # TELEGRAM_WEBHOOK_SECRET = 'cambia_este_secreto_inseguro_default_12345'
+    # O lanzar un error:
+    # from django.core.exceptions import ImproperlyConfigured
+    # raise ImproperlyConfigured("TELEGRAM_WEBHOOK_SECRET es requerido y no está definido en el entorno.")
+
+
+# Path para el webhook que incluye el secreto. Django lo usará en urls.py.
+# Ejemplo: si TELEGRAM_WEBHOOK_SECRET es "MI_SECRETO", esto será "telegram_webhook/MI_SECRETO/"
+TELEGRAM_WEBHOOK_PATH = f"telegram_webhook/{TELEGRAM_WEBHOOK_SECRET}/"
+
+# URL completa que se configurará en Telegram para el webhook.
+# Esta URL se construye usando PUBLIC_BACKEND_URL y TELEGRAM_WEBHOOK_PATH.
+TELEGRAM_WEBHOOK_URL = f"{PUBLIC_BACKEND_URL.rstrip('/')}/{TELEGRAM_WEBHOOK_PATH.strip('/')}/" # strip('/') en path para evitar doble barra
+
+
+# Opcional: Chat ID del administrador para notificaciones de errores del bot
+admin_id_from_env = config('TELEGRAM_ADMIN_CHAT_ID', default=None) # Lee como string o None
+if admin_id_from_env and admin_id_from_env.strip(): # Procesa solo si hay algo no vacío
+    try:
+        TELEGRAM_ADMIN_CHAT_ID = int(admin_id_from_env)
+    except ValueError:
+        # Esto se imprimirá si la variable está en .env pero no es un número (ej. "abc") o está vacía (ej. TELEGRAM_ADMIN_CHAT_ID=)
+        print(f"ADVERTENCIA: TELEGRAM_ADMIN_CHAT_ID ('{admin_id_from_env}') en .env no es un entero válido o está vacío. Se usará None.")
+        TELEGRAM_ADMIN_CHAT_ID = None
+else:
+    # Esto se ejecutará si la variable no está en .env (admin_id_from_env será None)
+    # o si está en .env pero es una cadena de solo espacios (ej. "   ")
+    TELEGRAM_ADMIN_CHAT_ID = None
+
+
+# Prints de depuración (opcionales, pero útiles durante la configuración)
+# Puedes comentarlos o eliminarlos una vez que todo funcione.
+if DEBUG: # Solo imprimir si DEBUG es True
+    print("--- DEBUG TELEGRAM SETTINGS ---")
+    print(f"TELEGRAM_BOT_TOKEN: {'Configurado' if TELEGRAM_BOT_TOKEN else 'NO CONFIGURADO'}")
+    print(f"TELEGRAM_WEBHOOK_SECRET: {TELEGRAM_WEBHOOK_SECRET if TELEGRAM_WEBHOOK_SECRET else 'NO CONFIGURADO'}")
+    print(f"PUBLIC_BACKEND_URL (usado para webhook): {PUBLIC_BACKEND_URL}")
+    print(f"TELEGRAM_WEBHOOK_PATH (para Django urls): {TELEGRAM_WEBHOOK_PATH}")
+    print(f"TELEGRAM_WEBHOOK_URL (para Telegram API): {TELEGRAM_WEBHOOK_URL}")
+    print(f"TELEGRAM_ADMIN_CHAT_ID: {TELEGRAM_ADMIN_CHAT_ID if TELEGRAM_ADMIN_CHAT_ID else 'No configurado'}")
+    print("-------------------------------")
+
+# ==============================================================================
+# Fin TELEGRAM BOT SETTINGS
+# ==============================================================================
