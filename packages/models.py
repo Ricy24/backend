@@ -1,10 +1,10 @@
 import decimal
 from django.db import models
 from django.conf import settings
-from api.models import Terapia
+from api.models import Terapia # Asegúrate que esta importación sea correcta y Terapia esté definida en api.models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from pagos.models import Payment
+from pagos.models import Payment # Asegúrate que esta importación sea correcta y Payment esté definida en pagos.models
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,13 +18,21 @@ class DiscountCode(models.Model):
     uses = models.PositiveIntegerField(default=0)
 
     def is_valid(self):
+        # Verifica primero si está activo
         if not self.is_active:
-            return False, "El código está inactivo."
+            return False, "El código de descuento está inactivo."
+
+        # Verifica la fecha de expiración (si existe)
         if self.valid_until and self.valid_until < timezone.now():
-            return False, "El código ha expirado."
+            # Si valid_until es anterior a ahora, el código ha expirado.
+            return False, "El código de descuento ha expirado."
+
+        # Verifica el límite de usos (si existe)
         if self.max_uses is not None and self.uses >= self.max_uses:
-            return False, "El código ha alcanzado su límite de usos."
-        return True, ""
+            return False, "Este código de descuento ha alcanzado su límite de usos."
+
+        # Si pasó todas las validaciones
+        return True, "" # Retorna True y un string vacío para "sin error"
 
     def __str__(self):
         return f"{self.code} ({self.discount_percentage}% off)"
@@ -74,41 +82,34 @@ class Purchase(models.Model):
     reference_code = models.CharField(max_length=100, unique=True)
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
     payment_provider = models.CharField(max_length=50, blank=True, null=True)
-    payment_details = models.JSONField(blank=True, null=True) # Usaremos este campo
+    payment_details = models.JSONField(blank=True, null=True)
     error_message = models.TextField(blank=True, null=True)
-    currency = models.CharField(max_length=3, default='COP') # <-- RECOMENDADO AÑADIR ESTE CAMPO
+    currency = models.CharField(max_length=3, default='COP')
 
     def __str__(self):
-        # ... (tu método __str__ actual) ...
         user_display = getattr(self.user, 'email', None) or str(self.user.pk)
         terapia_display = f" para Terapia {self.terapia.id}" if self.terapia else f" ({self.therapy_type_purchased})"
         return f"Compra {self.purchased_session_count} sesiones por {user_display}{terapia_display} - Estado: {self.payment_status}"
 
     def update_payment_status(self, new_status, provider=None, transaction_id=None, details=None, error=None):
-        """
-        Actualiza el estado del pago y, si se completa, crea el registro Payment.
-        """
-        # Actualizar campos de la Purchase
         self.payment_status = new_status
         if provider:
             self.payment_provider = provider
         if transaction_id:
             self.transaction_id = transaction_id
         if details is not None:
-            # Asegurarse de que details sea un diccionario o None
             self.payment_details = details if isinstance(details, dict) else {}
         if error is not None:
             self.error_message = error
 
-        # --- Lógica de Sesiones Pendientes ---
         if new_status == 'completed':
-            if self.remaining_sessions == 0: # Restaurar si estaban en 0
+            # Solo actualiza remaining_sessions si es una compra nueva que se completa,
+            # o si por alguna razón se estaba reintentando un pago y remaining_sessions era 0.
+            if self.remaining_sessions == 0:
                 self.remaining_sessions = self.purchased_session_count
         elif new_status in ['failed', 'refunded']:
             self.remaining_sessions = 0
-        # No tocar si es 'pending'
 
-        # Guardar cambios principales en la Purchase ANTES de intentar crear Payment
         update_fields = ['payment_status', 'remaining_sessions']
         if provider: update_fields.append('payment_provider')
         if transaction_id: update_fields.append('transaction_id')
@@ -118,12 +119,9 @@ class Purchase(models.Model):
         self.save(update_fields=update_fields)
         logger.info(f"Purchase {self.reference_code} actualizada a estado: {self.payment_status}. Campos actualizados: {update_fields}")
 
-        # --- INICIO: CÓDIGO AÑADIDO PARA CREAR PAYMENT ---
         if new_status == 'completed' and self.final_price > 0 and transaction_id:
             try:
-                payment_method_details = self.payment_details or {} # Usar detalles guardados
-
-                # Extraer método y últimos 4 dígitos (Ejemplo, ajustar según estructura REAL de 'details')
+                payment_method_details = self.payment_details or {}
                 method_description = "Desconocido"
                 card_last_four = None
 
@@ -132,59 +130,45 @@ class Purchase(models.Model):
                     cc_num = payment_method_details.get('cc_number')
                     if cc_num and isinstance(cc_num, str) and len(cc_num) >= 4:
                          card_last_four = cc_num[-4:]
-                    # Alternativa si PayU lo manda diferente:
-                    # card_last_four = payment_method_details.get('transactionResponse', {}).get('extraParameters', {}).get('card_last_four')
-
                 elif self.payment_provider == 'mercadopago':
                     method_description = payment_method_details.get('payment_method', {}).get('name', payment_method_details.get('payment_type_id', 'MercadoPago'))
                     card_info = payment_method_details.get('card', {})
                     card_last_four = card_info.get('last_four_digits')
 
-                # Crear descripción para el Payment
                 payment_description = f"Compra {self.reference_code} ({self.purchased_session_count} sesiones {self.therapy_type_purchased})"
 
-                # Usar update_or_create para evitar duplicados si el webhook se llama varias veces
                 payment_obj, created = Payment.objects.update_or_create(
-                    # Clave única para buscar/actualizar
                     transaction_id=transaction_id,
                     provider=self.payment_provider,
                     defaults={
                         'user': self.user,
-                         # Asume que tienes un campo 'purchase' ForeignKey en tu modelo Payment
-                         # Si no, elimina esta línea.
-                        'purchase': self,
+                        'purchase': self, # Asumiendo que Payment tiene un FK a Purchase
                         'amount': self.final_price,
-                        'currency': getattr(self, 'currency', 'COP'), # Usa campo 'currency' o default 'COP'
-                        'status': 'completed', # Estado del Payment
+                        'currency': self.currency,
+                        'status': 'completed',
                         'method': method_description,
                         'card_last_four': card_last_four,
                         'description': payment_description,
-                        # 'created_at' se maneja automáticamente por Django
                     }
                 )
                 if created:
                     logger.info(f"Registro Payment CREADO para TxID {transaction_id} (Compra {self.reference_code})")
                 else:
                      logger.info(f"Registro Payment ACTUALIZADO para TxID {transaction_id} (Compra {self.reference_code})")
-
             except Exception as e:
                 logger.error(f"Error al crear/actualizar registro Payment para TxID {transaction_id} (Compra {self.reference_code}): {e}", exc_info=True)
-                # Considera si quieres añadir este error al error_message de la Purchase también
-                # self.error_message = (self.error_message or "") + f"\nError creando Payment: {e}"
-                # self.save(update_fields=['error_message'])
 
-        # --- FIN: CÓDIGO AÑADIDO ---
-        
     @staticmethod
-    def calculate_price(therapy_type, session_count, discount_code=None):
-        import decimal
-        from django.utils import timezone
-        from .models import SessionPricingTier, DiscountCode
-        import logging
+    def calculate_price(therapy_type, session_count, discount_code_obj=None): # Cambiado a discount_code_obj
+        # import decimal # Ya está importado al inicio del archivo
+        # from django.utils import timezone # Ya está importado al inicio del archivo
+        # from .models import SessionPricingTier, DiscountCode # Evitar importación circular si se llama desde el mismo módulo
+        # import logging # Ya está importado al inicio del archivo
 
-        logger = logging.getLogger(__name__)
+        # logger = logging.getLogger(__name__) # Ya está definido globalmente
 
         if not isinstance(session_count, int) or session_count <= 0:
+            # Levantar un error más específico si es posible, o dejarlo como ValueError
             raise ValueError("El número de sesiones debe ser un entero positivo.")
 
         tiers = SessionPricingTier.objects.filter(
@@ -197,7 +181,7 @@ class Purchase(models.Model):
             raise ValueError(f"No se encontró un tier de precios activo para {therapy_type} con {session_count} sesiones.")
 
         tier = tiers.first()
-        logger.debug(f"Tier seleccionado para {therapy_type}: min_sessions={tier.min_sessions}, price_per_session={tier.price_per_session}")
+        # logger.debug(f"Tier seleccionado para {therapy_type}: min_sessions={tier.min_sessions}, price_per_session={tier.price_per_session}")
 
         if tier.max_sessions and session_count > tier.max_sessions:
             raise ValueError(f"El número de sesiones ({session_count}) excede el máximo permitido ({tier.max_sessions}) para este tier.")
@@ -205,46 +189,53 @@ class Purchase(models.Model):
         price_per_session = tier.price_per_session
         if not isinstance(price_per_session, decimal.Decimal):
             price_per_session = decimal.Decimal(str(price_per_session))
-        logger.debug(f"Price per session: {price_per_session}")
+        # logger.debug(f"Price per session: {price_per_session}")
 
         base_price = price_per_session * decimal.Decimal(session_count)
-        logger.debug(f"Base price: {base_price}")
+        # logger.debug(f"Base price: {base_price}")
 
         discount_percentage = decimal.Decimal('0.00')
         discount_amount = decimal.Decimal('0.00')
         discount_error = None
-        applied_discount_code = None
+        applied_discount_code_for_return = None # El objeto código de descuento a retornar
 
-        if discount_code:
-            try:
-                discount = DiscountCode.objects.get(code=discount_code)
-                is_valid, error_msg = discount.is_valid()
-                if is_valid:
-                    discount_percentage = discount.discount_percentage
-                    if not isinstance(discount_percentage, decimal.Decimal):
-                        discount_percentage = decimal.Decimal(str(discount_percentage))
-                    discount_amount = (base_price * discount_percentage) / decimal.Decimal('100')
-                    applied_discount_code = discount
-                    logger.debug(f"Descuento aplicado: {discount_percentage}%, Monto: {discount_amount}")
-                else:
-                    discount_error = error_msg
-            except DiscountCode.DoesNotExist:
-                discount_error = "Código de descuento no válido."
+        if discount_code_obj: # Ahora espera un objeto DiscountCode o None
+            # No necesitamos hacer DiscountCode.objects.get() aquí, ya tenemos el objeto.
+            # La validación (is_active, valid_until, max_uses) se hace ANTES de llamar a calculate_price, en el serializer.
+            # Aquí solo aplicamos el porcentaje si el objeto existe.
+            is_valid, error_msg = discount_code_obj.is_valid() # Re-chequeo por si acaso o si la lógica cambia
+            if is_valid:
+                discount_percentage = discount_code_obj.discount_percentage
+                if not isinstance(discount_percentage, decimal.Decimal):
+                    discount_percentage = decimal.Decimal(str(discount_percentage))
+                discount_amount = (base_price * discount_percentage) / decimal.Decimal('100')
+                applied_discount_code_for_return = discount_code_obj # Guardamos el objeto para retornarlo
+                # logger.debug(f"Descuento aplicado: {discount_percentage}%, Monto: {discount_amount}")
+            else:
+                # Si por alguna razón el código que se pasó no es válido,
+                # seteamos el error. El serializador debería haberlo atrapado antes.
+                discount_error = error_msg
+        # else: No se proporcionó ningún objeto de código de descuento
 
         final_price = base_price - discount_amount
-        logger.debug(f"Final price calculado: {final_price}")
+        # logger.debug(f"Final price calculado: {final_price}")
 
-        if final_price <= 0:
-            raise ValueError(f"El precio final ({final_price}) debe ser mayor a cero.")
+        # La validación de final_price <= 0 podría hacerse también en el serializador
+        # después de llamar a calculate_price, para un control más centralizado.
+        # Pero si se deja aquí, también está bien.
+        if final_price < 0: # Permitir 0, pero no negativo
+            final_price = decimal.Decimal('0.00') # Opcional: Forzar a 0 si es negativo
+            # O podrías lanzar un error si un precio negativo no tiene sentido:
+            # raise ValueError(f"El precio final calculado es negativo ({final_price}), lo cual no es permitido.")
 
         return {
             "therapy_type": therapy_type,
             "session_count": session_count,
             "price_per_session": price_per_session,
             "base_price": base_price,
-            "discount_code": applied_discount_code,
+            "discount_code": applied_discount_code_for_return, # Devolver el objeto
             "discount_percentage": discount_percentage,
             "discount_amount": discount_amount,
             "final_price": final_price,
-            "discount_error": discount_error
+            "discount_error": discount_error # Este será None si todo fue bien con el descuento
         }
