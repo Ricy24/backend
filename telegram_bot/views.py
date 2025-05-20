@@ -1,117 +1,329 @@
+# telegram_bot/views.py
+
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets # Para generar tokens seguros
 
 import requests
-from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
+from django.http import JsonResponse
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from django.utils.timezone import make_aware
+from django.utils import timezone # Importar timezone de Django
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
 
-# Importar la librería de Groq
 from groq import Groq
 
-# Asegúrate de que tus modelos estén correctamente importados
+# Modelos de la app 'api' y otras apps
+from api.models import Usuario, Terapia, MiembroTerapia # Añade más según necesites
+from packages.models import Purchase
+from google_calendar.models import CalendarEvent
+# from therapy.models import UserChallenge, EmotionalPath, DailyComponent
+
+# Modelos del bot
+from .models import TelegramChat, TelegramMessage # Ahora importamos directamente
+
+# Utilidad de envío de emails
 try:
-    from .models import TelegramChat, TelegramMessage
-    # from .models import KnowledgeItem # Si planeas usar RAG o una base de conocimiento
+    from emails.utils import send_brevo_email
 except ImportError:
-    TelegramChat = None
-    TelegramMessage = None
-    # KnowledgeItem = None
-    logging.warning("Modelos no encontrados al importar en views.py.")
+    send_brevo_email = None
+    logging.warning("Función send_brevo_email no encontrada. La verificación por email no funcionará.")
 
 logger = logging.getLogger(__name__)
 
-# --- Funciones de utilidad para enviar mensajes (sin cambios) ---
+# --- (CONVERSATION_STATE ya no es tan necesario si guardamos el estado en TelegramChat) ---
+# CONVERSATION_STATE = {}
+
+# --- Funciones de utilidad (send_telegram_message como estaba) ---
 def send_telegram_message(chat_id, text, parse_mode=None, reply_markup=None):
-    # ... (código existente) ...
     if not settings.TELEGRAM_BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN no está configurado.")
-        return False
-
+        return None # Devuelve None o False para indicar fallo
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        'chat_id': chat_id,
-        'text': text,
-    }
-    if parse_mode:
-        payload['parse_mode'] = parse_mode
-    if reply_markup:
-        payload['reply_markup'] = json.dumps(reply_markup)
-
+    payload = {'chat_id': chat_id, 'text': text}
+    if parse_mode: payload['parse_mode'] = parse_mode
+    if reply_markup: payload['reply_markup'] = json.dumps(reply_markup)
     try:
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
-        logger.info(f"Mensaje enviado a {chat_id}. Status: {response.status_code}")
+        logger.info(f"Mensaje enviado a {chat_id}. Status: {response.status_code}. Respuesta: {response.text[:200]}")
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Error enviando mensaje a {chat_id}: {e}")
         if hasattr(e, 'response') and e.response is not None:
             logger.error(f"Respuesta de Telegram (error): {e.response.text}")
-        return False
-# --- Fin funciones de utilidad ---
+        return None
 
-# --- Función para obtener respuesta de Groq ---
-def get_groq_response(user_query, chat_history=None):
-    """
-    Obtiene una respuesta del modelo de lenguaje usando la API de Groq.
-    """
+# --- Función para obtener respuesta de Groq (modificada para aceptar contexto de usuario) ---
+def get_groq_response(user_query, chat_history=None, user_context_data=None):
     if not settings.GROQ_API_KEY:
         logger.error("GROQ_API_KEY no está configurada en settings.")
         return "Lo siento, no puedo procesar tu solicitud en este momento (error de configuración)."
-
     try:
         client = Groq(api_key=settings.GROQ_API_KEY)
-
-        # ---- Definición del System Prompt ----
-        # Personaliza este prompt para Senti
         system_prompt_content = (
-            "Eres SentiBot, un asistente virtual experto de Senti. Senti es una empresa que [describe brevemente Senti: qué hace, a quién ayuda, sus principales productos/servicios]. "
-            "Tu objetivo es ayudar a los usuarios respondiendo sus preguntas sobre Senti de manera clara, concisa y amigable. "
-            "Si te preguntan algo que no está relacionado con Senti o no sabes la respuesta, indica amablemente que no puedes ayudar con esa consulta específica y sugiere que reformulen la pregunta o contacten a soporte si es un tema complejo."
-            "Evita dar opiniones personales o hablar de temas fuera de tu rol como asistente de Senti."
-            "Intenta ser breve en tus respuestas."
+            "Eres SentiBot, un asistente virtual experto de Senti. Senti es una empresa que ofrece servicios de terapia online y herramientas para el bienestar emocional. "
+            "Tu objetivo es ayudar a los usuarios respondiendo sus preguntas sobre Senti. "
+            "Si el usuario ha verificado su correo, puedes acceder a su información personal como terapias, compras y citas para dar respuestas más precisas. "
+            "Si te preguntan algo que no está relacionado con Senti o no sabes la respuesta, indica amablemente que no puedes ayudar con esa consulta específica. "
+            "Evita dar opiniones personales. Sé conciso y amigable. Si necesitas que el usuario verifique su identidad para una acción, indícalo."
         )
-        # ---- Fin Definición del System Prompt ----
+        if user_context_data: # user_context_data es un string con la info del usuario
+            system_prompt_content += f"\n\nContexto del usuario verificado (Nombre: {user_context_data.get('nombre', 'N/A')}):\n{user_context_data.get('summary_text', '')}"
 
         messages_for_groq = [{"role": "system", "content": system_prompt_content}]
-
-        # Opcional: Añadir historial de chat si está disponible y es relevante
         if chat_history: # chat_history debería ser una lista de {"role": "user/assistant", "content": "..."}
-            # Limita el historial para no exceder el límite de tokens
-            # Aquí se puede implementar una lógica más sofisticada (ej. resumir, seleccionar mensajes clave)
-            for msg in chat_history[-5:]: # Tomar los últimos 5 mensajes, por ejemplo
-                messages_for_groq.append(msg)
-
+            for msg in chat_history[-5:]: messages_for_groq.append(msg)
         messages_for_groq.append({"role": "user", "content": user_query})
 
-        # Modelos disponibles en Groq: "llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma-7b-it"
-        # Elige el que mejor se adapte a tus necesidades y presupuesto (si aplica)
-        # llama3-8b-8192 es una buena opción balanceada para empezar.
         chat_completion = client.chat.completions.create(
-            messages=messages_for_groq,
-            model="llama3-8b-8192", # O el modelo que prefieras de Groq
-            temperature=0.7,        # Ajusta la creatividad (0.0 más determinista, 1.0 más creativo)
-            max_tokens=300,         # Límite de tokens para la respuesta
-            # top_p=1,              # Otra forma de controlar la aleatoriedad
-            # stop=None,            # Secuencias para detener la generación
-            # stream=False,         # Si quieres procesar la respuesta en trozos (más complejo de integrar aquí)
+            messages=messages_for_groq, model="llama3-8b-8192", temperature=0.7, max_tokens=500
         )
         response_text = chat_completion.choices[0].message.content.strip()
         return response_text
-
     except Exception as e:
         logger.error(f"Error al interactuar con la API de Groq: {e}")
-        # Considera si quieres dar un mensaje de error más técnico al usuario o uno genérico
         return "Lo siento, he encontrado un problema al intentar generar una respuesta. Por favor, inténtalo de nuevo más tarde."
-# --- Fin función Groq ---
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TelegramWebhookView(View):
+    
+    def get_or_create_telegram_chat(self, chat_id_telegram, chat_data_telegram):
+        chat, created = TelegramChat.objects.get_or_create(
+            chat_id=chat_id_telegram,
+            defaults={
+                'type': chat_data_telegram.get('type', 'private'),
+                'first_name': chat_data_telegram.get('first_name'),
+                'last_name': chat_data_telegram.get('last_name'),
+                'username': chat_data_telegram.get('username'),
+            }
+        )
+        if not created: # Si ya existía, actualizamos por si cambió nombre/username
+            updated = False
+            if chat.first_name != chat_data_telegram.get('first_name'):
+                chat.first_name = chat_data_telegram.get('first_name')
+                updated = True
+            if chat.last_name != chat_data_telegram.get('last_name'):
+                chat.last_name = chat_data_telegram.get('last_name')
+                updated = True
+            if chat.username != chat_data_telegram.get('username'):
+                chat.username = chat_data_telegram.get('username')
+                updated = True
+            if updated:
+                chat.save(update_fields=['first_name', 'last_name', 'username', 'updated_at'])
+        return chat, created
+
+    def save_telegram_message(self, chat_instance, message_id_telegram, from_user_id_telegram, text, date_timestamp, is_from_bot, raw_update=None):
+        try:
+            # Evitar duplicados si Telegram reenvía (basado en message_id_telegram y chat)
+            if message_id_telegram and not is_from_bot: # Solo para mensajes de usuario con ID de Telegram
+                 if TelegramMessage.objects.filter(chat=chat_instance, message_id_telegram=message_id_telegram).exists():
+                    logger.info(f"Mensaje (TG:{message_id_telegram}) de chat {chat_instance.chat_id} ya existe. No se guarda ni procesa de nuevo.")
+                    return None # Indica que no se procese más
+
+            message_date = timezone.make_aware(datetime.fromtimestamp(date_timestamp)) if date_timestamp else timezone.now()
+
+            msg = TelegramMessage.objects.create(
+                message_id_telegram=message_id_telegram, # Puede ser None si es un mensaje del bot aún no enviado
+                chat=chat_instance,
+                from_user_id=from_user_id_telegram,
+                text=text,
+                date=message_date,
+                is_from_bot=is_from_bot,
+                raw_update=raw_update if not is_from_bot else None
+            )
+            logger.info(f"Mensaje (ID Django:{msg.id}, TG:{message_id_telegram or 'BOT'}) de chat {chat_instance.chat_id} guardado.")
+            return msg
+        except Exception as e: # Podría ser un IntegrityError por unique_together si hay race condition
+            logger.error(f"No se pudo guardar el mensaje (TG:{message_id_telegram}) para el chat {chat_instance.chat_id}: {e}", exc_info=True)
+            # Re-chequear si ya existe, por si fue una race condition
+            if message_id_telegram and not is_from_bot and TelegramMessage.objects.filter(chat=chat_instance, message_id_telegram=message_id_telegram).exists():
+                return None
+            return False # Indica error
+
+    def send_and_save_bot_response(self, chat_instance, bot_text_response):
+        """Envía la respuesta del bot y la guarda en la BD."""
+        if not bot_text_response:
+            logger.warning(f"No se envió respuesta al chat {chat_instance.chat_id} porque el texto estaba vacío.")
+            return
+
+        # Primero guardamos el mensaje del bot (sin message_id_telegram aún)
+        bot_msg_db = self.save_telegram_message(
+            chat_instance=chat_instance,
+            message_id_telegram=None, # Se actualizará después si Telegram devuelve uno
+            from_user_id_telegram=None, # Es del bot
+            text=bot_text_response,
+            date_timestamp=None, # se usará timezone.now()
+            is_from_bot=True
+        )
+        
+        if bot_msg_db is False: # Error al guardar
+             logger.error(f"No se pudo guardar la respuesta del bot para el chat {chat_instance.chat_id} ANTES de enviar.")
+             # Podrías decidir enviar igualmente si el guardado falla.
+             # Por ahora, si no se guarda, no se envía para consistencia.
+             # return
+
+        # Luego enviamos a Telegram
+        response_data = send_telegram_message(chat_instance.chat_id, bot_text_response)
+
+        if response_data and response_data.get('ok'):
+            # Actualizar el mensaje del bot en la BD con el message_id de Telegram si lo tenemos
+            # Esto es opcional, pero útil si quieres relacionar respuestas específicas.
+            # Sin embargo, la API sendMessage no devuelve el message_id del mensaje enviado por el bot en la respuesta directa.
+            # Para obtener el message_id del mensaje del bot, necesitarías otra lógica (ej. si usas Inline Keyboards y obtienes updates).
+            # Por ahora, no actualizaremos el message_id_telegram del mensaje del bot.
+            pass
+        elif bot_msg_db: # Si el envío falló pero se guardó
+            logger.warning(f"Respuesta del bot para {chat_instance.chat_id} guardada (ID:{bot_msg_db.id}) pero falló al enviar a Telegram.")
+            # Podrías marcar este mensaje en la BD como "envío_fallido"
+            # bot_msg_db.send_status = 'failed'
+            # bot_msg_db.save()
+
+    # --- Lógica de verificación de email ---
+    def start_email_verification(self, chat_instance, email_to_verify, pending_action, original_query):
+        chat_id = chat_instance.chat_id
+        try:
+            user = Usuario.objects.get(email__iexact=email_to_verify) # Case-insensitive
+        except Usuario.DoesNotExist:
+            send_telegram_message(chat_id, f"No encontramos una cuenta Senti asociada al correo {email_to_verify}. Por favor, verifica el correo o regístrate en Senti.")
+            chat_instance.clear_verification_fields() # Limpiar cualquier intento previo
+            chat_instance.save()
+            return
+
+        # Comprobar si este email ya está verificado y asociado a OTRO chat de Telegram
+        # Esto previene que un usuario "robe" la asociación de otro chat de Telegram si conoce el email
+        if TelegramChat.objects.filter(user=user).exclude(chat_id=chat_id).exists():
+            send_telegram_message(chat_id, f"El correo {email_to_verify} ya está asociado y verificado con otra cuenta de Telegram. Si crees que esto es un error, contacta a soporte.")
+            chat_instance.clear_verification_fields()
+            chat_instance.save()
+            return
+
+        verification_code = "".join(secrets.choice("0123456789") for _ in range(6))
+        expiry_time = timezone.now() + timedelta(minutes=10)
+
+        chat_instance.verification_code = verification_code
+        chat_instance.verification_code_email = user.email # Guardamos el email canonico de la BD
+        chat_instance.verification_code_expiry = expiry_time
+        chat_instance.pending_action_after_verification = pending_action
+        chat_instance.original_query_for_verification = original_query
+        chat_instance.save()
+
+        if send_brevo_email:
+            email_subject = "Tu código de verificación para SentiBot"
+            email_context = {'nombre': user.nombre or user.email.split('@')[0], 'code': verification_code, 'year': timezone.now().year}
+            
+            email_sent_successfully = send_brevo_email(
+                subject=email_subject,
+                to_email=user.email,
+                template_name="emails/telegram_verification_code.html", # Asegúrate que la ruta sea correcta
+                context=email_context
+            )
+            if email_sent_successfully:
+                send_telegram_message(chat_id, f"Te hemos enviado un código de verificación a {user.email}. Por favor, ingrésalo aquí para continuar. El código expira en 10 minutos.")
+            else:
+                send_telegram_message(chat_id, "Hubo un problema al enviar el correo de verificación. Por favor, intenta más tarde.")
+                chat_instance.clear_verification_fields() # Limpiar si el email no se pudo enviar
+                chat_instance.save()
+        else:
+            logger.error("send_brevo_email no está disponible. No se puede enviar código de verificación.")
+            send_telegram_message(chat_id, "Lo siento, el servicio de envío de correos no está disponible en este momento. No puedo verificar tu email.")
+            chat_instance.clear_verification_fields()
+            chat_instance.save()
+
+    def process_verification_code_input(self, chat_instance, entered_code):
+        chat_id = chat_instance.chat_id
+        
+        if chat_instance.verification_code == entered_code.strip():
+            # Código correcto y no expirado (ya chequeado en is_awaiting_verification_code)
+            try:
+                user_to_link = Usuario.objects.get(email__iexact=chat_instance.verification_code_email)
+                
+                # Si el usuario ya estaba vinculado a OTRO chat, y ese chat tenia 'user'
+                # Este es un caso delicado. Podríamos desvincular el anterior o impedirlo.
+                # Por ahora, el OneToOneField en TelegramChat.user debería prevenirlo si se asigna.
+                # Si el TelegramChat.user ya tiene un usuario y es diferente, ¿qué hacer?
+                # Por ahora, asumimos que si llegamos aquí, estamos listos para (re)vincular.
+
+                chat_instance.user = user_to_link
+                chat_instance.email_verified_at = timezone.now()
+                
+                pending_action = chat_instance.pending_action_after_verification
+                original_query = chat_instance.original_query_for_verification
+                
+                chat_instance.clear_verification_fields() # Limpiar campos de verificación
+                chat_instance.save()
+
+                send_telegram_message(chat_id, "¡Correo verificado exitosamente! 🎉 Ahora puedo ayudarte con tu información personal.")
+                
+                # Procesar la acción pendiente
+                if original_query: # Si había una consulta original, intentamos responderla ahora
+                    logger.info(f"Procesando acción pendiente: {pending_action} con query: {original_query} para usuario {user_to_link.email}")
+                    user_context_data = self._get_user_context_for_groq(user_to_link, action_hint=pending_action)
+                    bot_response = get_groq_response(original_query, user_context_data=user_context_data)
+                    self.send_and_save_bot_response(chat_instance, bot_response)
+                else: # Si no, un mensaje genérico
+                    self.send_and_save_bot_response(chat_instance, "Ya estás verificado. ¿En qué te puedo ayudar ahora?")
+
+            except Usuario.DoesNotExist: # No debería pasar si start_email_verification funcionó
+                send_telegram_message(chat_id, "Hubo un problema inesperado al verificar tu cuenta. Por favor, intenta el proceso de nuevo.")
+                chat_instance.clear_verification_fields()
+                chat_instance.save()
+        else:
+            send_telegram_message(chat_id, "El código de verificación es incorrecto. Por favor, inténtalo de nuevo. Revisa tu correo.")
+            # No limpiamos el código aquí, para que pueda reintentar hasta que expire.
+
+    def _get_user_context_for_groq(self, user, action_hint=None):
+        """Prepara un string de contexto sobre el usuario para Groq."""
+        if not user: return None
+
+        context = {"nombre": user.nombre or user.email.split('@')[0]}
+        summary_parts = [f"Información para el usuario {context['nombre']} (Email: {user.email}, Tipo de cuenta: {user.tipo_cuenta})."]
+
+        # Basado en action_hint, podríamos ser más específicos.
+        # Por ejemplo, si action_hint == "get_my_therapies"
+        
+        # Terapias
+        miembro_terapias = MiembroTerapia.objects.filter(usuario=user).select_related('terapia')
+        if miembro_terapias.exists():
+            summary_parts.append("Terapias Activas:")
+            for mt in miembro_terapias:
+                terapia_info = f"  - Terapia de tipo '{mt.terapia.get_tipo_display()}'"
+                if mt.terapia.nombre_familia: terapia_info += f" (Familia: {mt.terapia.nombre_familia})"
+                
+                next_event = CalendarEvent.objects.filter(
+                    terapia=mt.terapia, start_time__gte=timezone.now()
+                ).order_by('start_time').first()
+                if next_event:
+                    terapia_info += f". Próxima sesión agendada: {next_event.start_time.strftime('%d %b %Y %H:%M')}."
+                else:
+                    terapia_info += ". No hay próximas sesiones agendadas para esta terapia."
+                summary_parts.append(terapia_info)
+        else:
+            summary_parts.append("Actualmente no estás en ninguna terapia.")
+
+        # Compras Recientes
+        purchases = Purchase.objects.filter(user=user, payment_status='completed').order_by('-purchase_date')[:2]
+        if purchases.exists():
+            summary_parts.append("Compras Recientes:")
+            for p in purchases:
+                summary_parts.append(f"  - Compra de {p.purchased_session_count} sesiones de {p.therapy_type_purchased} (quedan {p.remaining_sessions}), el {p.purchase_date.strftime('%d %b %Y')}.")
+        
+        # Próximas Citas Generales (no solo de terapia)
+        next_general_events = CalendarEvent.objects.filter(user=user, start_time__gte=timezone.now()).order_by('start_time')[:3]
+        if next_general_events:
+            summary_parts.append("Próximas Citas en Calendario:")
+            for event in next_general_events:
+                summary_parts.append(f"  - {event.title} ({event.get_type_display()}) el {event.start_time.strftime('%d %b %Y %H:%M')}.")
+
+        context["summary_text"] = "\n".join(summary_parts)
+        return context
+
+    # --- Manejador Principal POST ---
     def post(self, request):
         try:
             data = json.loads(request.body.decode('utf-8'))
@@ -127,156 +339,140 @@ class TelegramWebhookView(View):
         else:
             logger.warning(f"Tipo de actualización no manejada recibida: {list(data.keys())}")
             return JsonResponse({"status": "ok", "message": "Update type not handled but acknowledged"})
-
         return JsonResponse({"status": "ok"})
 
+    # --- Manejador de Mensajes ---
     def handle_message(self, message_data, raw_update):
-        if not TelegramChat or not TelegramMessage:
-            logger.error("Modelos de Telegram no están disponibles en handle_message.")
-            return
-
-        message_id = message_data['message_id']
-        chat_data = message_data['chat']
-        chat_id = chat_data['id']
-        text = message_data.get('text')
+        # Extraer datos básicos del mensaje
+        message_id_telegram = message_data['message_id']
+        chat_data_telegram = message_data['chat']
+        chat_id_telegram = chat_data_telegram['id']
+        user_text = message_data.get('text', "").strip()
         message_date_timestamp = message_data.get('date')
-
-        if message_date_timestamp:
-            message_date = make_aware(datetime.fromtimestamp(message_date_timestamp))
-        else:
-            logger.warning(f"Mensaje {message_id} no tiene campo 'date'. Usando now().")
-            message_date = make_aware(datetime.now())
-
         from_user_data = message_data.get('from', {})
-        from_user_id = from_user_data.get('id')
+        from_user_id_telegram = from_user_data.get('id')
 
-        chat, created_chat = TelegramChat.objects.update_or_create(
-            chat_id=chat_id,
-            defaults={
-                'type': chat_data.get('type', 'private'),
-                'first_name': chat_data.get('first_name'),
-                'last_name': chat_data.get('last_name'),
-                'username': chat_data.get('username'),
-            }
+        # Obtener o crear el chat y guardar el mensaje del usuario
+        chat_instance, _ = self.get_or_create_telegram_chat(chat_id_telegram, chat_data_telegram)
+        
+        # Guardar mensaje del usuario. Si retorna None, es un duplicado, no procesar.
+        user_msg_db = self.save_telegram_message(
+            chat_instance, message_id_telegram, from_user_id_telegram, 
+            user_text, message_date_timestamp, False, raw_update
         )
-        if created_chat:
-            logger.info(f"Nuevo chat creado: {chat_id} (@{chat.username or chat.first_name or ''})")
-
-        # Guardar el mensaje del usuario
-        saved_message = None
-        try:
-            if not TelegramMessage.objects.filter(message_id=message_id, chat=chat).exists(): # Añadido chat para mayor precisión
-                saved_message = TelegramMessage.objects.create(
-                    message_id=message_id,
-                    chat=chat,
-                    from_user_id=from_user_id,
-                    text=text,
-                    date=message_date,
-                    is_from_bot=False,
-                    raw_update=raw_update
-                )
-                logger.info(f"Mensaje {message_id} de {chat_id} guardado.")
-            else:
-                logger.info(f"Mensaje {message_id} de {chat_id} ya existe, no se guarda ni procesa de nuevo.")
-                return
-        except Exception as e:
-            logger.error(f"No se pudo guardar el mensaje {message_id} para el chat {chat_id}: {e}")
+        if user_msg_db is None: # Duplicado o error grave al guardar
             return
 
-        # Lógica de respuesta
-        if text:
-            user_text_lower_stripped = text.lower().strip()
-            bot_response_text = None
+        # --- Flujo de Verificación y Comandos ---
+        # 1. ¿Está el chat esperando un código de verificación?
+        if chat_instance.is_awaiting_verification_code():
+            self.process_verification_code_input(chat_instance, user_text)
+            return # La función de verificación se encarga de responder
 
-            if user_text_lower_stripped.startswith('/start'):
-                bot_response_text = f"¡Hola {chat.first_name or 'usuario'}! Soy SentiBot, tu asistente virtual para Senti. ¿En qué puedo ayudarte hoy?"
-            elif user_text_lower_stripped.startswith('/help'):
-                bot_response_text = (
-                    "Puedes preguntarme sobre Senti, nuestros productos o servicios. \n"
-                    "Comandos disponibles:\n"
-                    "/start - Reiniciar conversación\n"
-                    "/help - Mostrar esta ayuda"
-                )
+        # 2. ¿Está el chat esperando un email? (Se maneja por comando /verificar_email <email>)
+        # Ya no usamos CONVERSATION_STATE para esto, el usuario debe ser explícito.
+
+        # 3. Comandos especiales
+        if user_text.lower().startswith('/start'):
+            welcome_msg = f"¡Hola {chat_instance.first_name or 'usuario'}! Soy SentiBot. "
+            if chat_instance.user and chat_instance.email_verified_at:
+                welcome_msg += f"Veo que ya has verificado tu correo ({chat_instance.user.email}). ¿En qué te puedo ayudar?"
             else:
-                # --- Lógica para obtener respuesta de Groq ---
-                logger.info(f"Obteniendo respuesta de Groq para: '{text}'")
+                welcome_msg += "Puedes preguntarme sobre Senti, o si quieres acceder a tu información personal, usa el comando /verificar_email tu@correo.com"
+            self.send_and_save_bot_response(chat_instance, welcome_msg)
+            return
 
-                # Opcional: Recuperar historial de chat para Groq
-                # Esto es un ejemplo básico. Podrías querer más mensajes o lógica de resumen.
-                # El historial debe ser una lista de dicts: {"role": "user"|"assistant", "content": "..."}
-                # chat_history_for_groq = []
-                # recent_messages = TelegramMessage.objects.filter(chat=chat).order_by('-date')[:6] # Últimos N mensajes (incluyendo el actual del usuario)
-                # for msg in reversed(recent_messages): # Más antiguo a más nuevo
-                #     if msg.message_id == message_id: continue # No incluir el mensaje actual del usuario si ya está en `text`
-                #     role = "assistant" if msg.is_from_bot else "user"
-                #     if msg.text: # Solo si hay texto
-                #        chat_history_for_groq.append({"role": role, "content": msg.text})
+        elif user_text.lower().startswith('/help'):
+            help_message = (
+                "Soy SentiBot, tu asistente para Senti.\n"
+                "Comandos útiles:\n"
+                "/start - Reiniciar conversación.\n"
+                "/verificar_email <tu_correo@ejemplo.com> - Para acceder a tu información personal.\n"
+                "/mis_datos - (Requiere verificación) Para obtener un resumen de tu información.\n"
+                "/desvincular_email - Para quitar la asociación de tu email con este chat de Telegram.\n\n"
+                "También puedes hacerme preguntas generales sobre Senti."
+            )
+            self.send_and_save_bot_response(chat_instance, help_message)
+            return
 
-                # bot_response_text = get_groq_response(text, chat_history=chat_history_for_groq)
-                bot_response_text = get_groq_response(text) # Versión sin historial por simplicidad inicial
-
-            if bot_response_text:
-                send_telegram_message(chat_id, bot_response_text)
-                # Guardar la respuesta del bot en la base de datos
+        elif user_text.lower().startswith('/verificar_email'):
+            parts = user_text.split()
+            if len(parts) > 1:
+                email_to_verify = parts[1]
                 try:
-                    # Generamos un message_id_bot único (esto es un placeholder, Telegram no nos da este ID)
-                    # Podrías usar un UUID o un timestamp muy preciso, o simplemente no guardar message_id para respuestas de bot si no es crucial
-                    # Lo importante es asociarlo al chat correcto y marcarlo como is_from_bot=True
-                    bot_message_id_placeholder = f"bot_{message_id}_{int(datetime.now().timestamp())}"
-                    TelegramMessage.objects.create(
-                        message_id=bot_message_id_placeholder, # O gestiona esto de otra forma
-                        chat=chat,
-                        from_user_id=None, # O el ID de tu bot si lo tienes
-                        text=bot_response_text,
-                        date=make_aware(datetime.now()),
-                        is_from_bot=True,
-                        raw_update=None # No hay raw_update para mensajes enviados por el bot
-                    )
-                    logger.info(f"Respuesta del bot a {chat_id} guardada.")
-                except Exception as e:
-                    logger.error(f"No se pudo guardar la respuesta del bot para el chat {chat_id}: {e}")
+                    validate_email(email_to_verify) # Validación básica de formato
+                    # La acción pendiente por defecto será "ayuda_general_verificada"
+                    # La consulta original puede ser la propia solicitud de verificación
+                    self.start_email_verification(chat_instance, email_to_verify, "ayuda_general_verificada", user_text)
+                except DjangoValidationError:
+                    self.send_and_save_bot_response(chat_instance, "El formato del correo electrónico no es válido. Ejemplo: /verificar_email tu@correo.com")
+            else:
+                self.send_and_save_bot_response(chat_instance, "Por favor, incluye tu correo. Ejemplo: /verificar_email tu@correo.com")
+            return
+        
+        elif user_text.lower().startswith('/desvincular_email'):
+            if chat_instance.user:
+                old_email = chat_instance.user.email
+                chat_instance.user = None
+                chat_instance.email_verified_at = None
+                chat_instance.clear_verification_fields() # También limpia códigos pendientes
+                chat_instance.save()
+                self.send_and_save_bot_response(chat_instance, f"Se ha desvinculado el correo {old_email} de este chat de Telegram. Para volver a acceder a tu información personal, necesitarás verificar tu correo nuevamente.")
+            else:
+                self.send_and_save_bot_response(chat_instance, "No hay ningún correo electrónico vinculado a este chat de Telegram actualmente.")
+            return
 
-        else:
-            logger.info(f"Mensaje de {chat_id} sin texto. No se envía respuesta.")
+        # 4. Consultas que requieren verificación (ej. /mis_datos o palabras clave)
+        # Puedes definir palabras clave o comandos específicos
+        keywords_require_auth = ["mis datos", "mis terapias", "mis compras", "mis citas", "mi perfil"]
+        query_requires_auth = user_text.lower().startswith('/mis_datos') or any(keyword in user_text.lower() for keyword in keywords_require_auth)
+
+        if query_requires_auth:
+            if chat_instance.user and chat_instance.email_verified_at:
+                # Usuario verificado, obtener contexto y responder con Groq
+                user_context_data = self._get_user_context_for_groq(chat_instance.user, action_hint="get_personal_data")
+                bot_response = get_groq_response(user_text, user_context_data=user_context_data)
+                self.send_and_save_bot_response(chat_instance, bot_response)
+            else:
+                # No verificado, pedir verificación
+                chat_instance.pending_action_after_verification = "process_original_query"
+                chat_instance.original_query_for_verification = user_text
+                chat_instance.save() # Guardar la intención
+                self.send_and_save_bot_response(chat_instance, "Para responder a tu consulta sobre información personal, necesito verificar tu identidad. Por favor, usa el comando:\n/verificar_email tu@correo.com")
+            return
+
+        # 5. Consulta general a Groq (si no es comando y no requiere autenticación explícita)
+        # Si el usuario está verificado, igual pasamos un contexto básico por si Groq lo usa.
+        user_context_for_general_query = None
+        if chat_instance.user and chat_instance.email_verified_at:
+            user_context_for_general_query = self._get_user_context_for_groq(chat_instance.user, action_hint="general_query")
+        
+        bot_response_text = get_groq_response(user_text, user_context_data=user_context_for_general_query)
+        self.send_and_save_bot_response(chat_instance, bot_response_text)
+
 
     def handle_callback_query(self, callback_query_data, raw_update):
-        # ... (código existente, sin cambios relevantes para Groq en este punto) ...
+        # (Lógica para callbacks, similar a antes. Si un callback requiere datos de usuario,
+        #  chequear chat_instance.user y chat_instance.email_verified_at)
+        # ...
         query_id = callback_query_data['id']
-        from_user_data = callback_query_data.get('from', {})
-        from_user_id = from_user_data.get('id')
-
-        message_info = callback_query_data.get('message')
-        chat_instance = None
-        if message_info:
-            chat_instance = message_info.get('chat')
-
-        data_payload = callback_query_data.get('data')
-
-        logger.info(f"Callback query recibido: id={query_id}, from_user_id={from_user_id}, data={data_payload}")
-
+        # ... (resto de tu lógica de callback_query)
+        # Ejemplo:
+        # chat_id_telegram = callback_query_data['message']['chat']['id']
+        # chat_data_telegram = callback_query_data['message']['chat']
+        # chat_instance, _ = self.get_or_create_telegram_chat(chat_id_telegram, chat_data_telegram)
+        #
+        # if callback_query_data['data'] == "accion_requiere_auth":
+        #     if chat_instance.user and chat_instance.email_verified_at:
+        #         # Hacer algo
+        #     else:
+        #         send_telegram_message(chat_id_telegram, "Necesitas verificar tu email primero. Usa /verificar_email tu@correo.com")
+        
+        # Acusar recibo del callback query
         ack_url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/answerCallbackQuery"
         try:
             requests.post(ack_url, json={'callback_query_id': query_id}, timeout=5)
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al acusar recibo del callback query {query_id}: {e}")
 
-        if chat_instance and data_payload:
-            chat_id = chat_instance.get('id')
-            if not chat_id:
-                logger.warning(f"Callback query {query_id} no tiene chat_id en message.chat.")
-                return
-
-            # Aquí podrías, si el callback lo requiere, también llamar a Groq
-            # Por ejemplo, si un botón es "Saber más sobre X"
-            if data_payload.startswith("groq_query_"):
-                query_for_groq = data_payload.replace("groq_query_", "").replace("_", " ") # Ejemplo
-                bot_response = get_groq_response(f"Háblame sobre {query_for_groq}")
-                send_telegram_message(chat_id, bot_response)
-                # También guarda esta respuesta del bot
-            elif data_payload == 'accion_ejemplo_1':
-                send_telegram_message(chat_id, "Has pulsado el botón de ejemplo 1.")
-            # ...
-            else:
-                send_telegram_message(chat_id, f"Callback recibido con datos: {data_payload}")
-        else:
-            logger.warning(f"Callback query {query_id} sin chat_instance o data_payload. No se procesa acción.")
+        logger.info(f"Callback query no manejado explícitamente: {callback_query_data.get('data')}")
