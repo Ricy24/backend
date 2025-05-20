@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import TelegramWebhookView
+from .views import TelegramWebhookView 
+from django.views.decorators.csrf import csrf_exempt  
 
 app_name = 'telegram_bot'
 
