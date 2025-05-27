@@ -1,9 +1,42 @@
 # chat/serializers.py
 from rest_framework import serializers
-from .models import Mensaje
+from .models import Mensaje, CoachingSession, CoachingMensaje, CoachingMeta
 from django.contrib.auth import get_user_model # Mejor forma de obtener User
 
 Usuario = get_user_model()
+
+
+class CoachingMetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CoachingMeta
+        fields = ['id', 'descripcion', 'completada', 'fecha_limite', 'fecha_creacion']
+        read_only_fields = ['id', 'fecha_creacion']
+
+class CoachingSessionSerializer(serializers.ModelSerializer):
+    usuario_email = serializers.EmailField(source='usuario.email', read_only=True)
+    metas = CoachingMetaSerializer(many=True, read_only=True, source='metas_coaching') # Para listar metas
+
+    class Meta:
+        model = CoachingSession
+        fields = [
+            'id', 'usuario_email', 'objetivo_principal',
+            'fecha_inicio', 'ultima_actualizacion', 'metas'
+        ]
+        read_only_fields = ['id', 'usuario_email', 'fecha_inicio', 'ultima_actualizacion', 'metas']
+
+    # Para creación, el usuario solo debería pasar el objetivo_principal
+    def create(self, validated_data):
+        # El usuario se asigna en la vista desde request.user
+        return CoachingSession.objects.create(**validated_data)
+
+class CoachingMensajeSerializer(serializers.ModelSerializer):
+    # Opcional: si quieres mostrar el email del usuario en el mensaje
+    # usuario_email = serializers.EmailField(source='sesion.usuario.email', read_only=True)
+
+    class Meta:
+        model = CoachingMensaje
+        fields = ['id', 'sesion', 'es_respuesta_ia', 'contenido', 'timestamp']
+        read_only_fields = ['id', 'sesion', 'es_respuesta_ia', 'timestamp'] # sesion y es_respuesta_ia se manejan en la vista
 
 class MensajeSerializer(serializers.ModelSerializer):
     # Quién envía el mensaje

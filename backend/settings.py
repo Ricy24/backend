@@ -37,6 +37,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://api.senti.lat",
     "http://localhost:8000",
     "http://localhost:5174",
+    "http://localhost:4321",
     
 ]
 
@@ -77,6 +78,7 @@ INSTALLED_APPS = [
     'celery',
     'spotify_insights',
     'telegram_bot',
+    'landing_api',
     
 ]
 
@@ -197,7 +199,8 @@ CORS_ALLOW_METHODS = [
 CORS_ALLOWED_ORIGINS = [
     "https://app.senti.lat", 
     "https://senti.lat",
-    "http://localhost:5174", # Frontend en producción
+    "http://localhost:5174",
+    "http://localhost:4321", 
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales
