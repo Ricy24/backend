@@ -33,6 +33,8 @@ urlpatterns = [
     path('api/emails/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('api/spotify/', include('spotify_insights.urls')),
     path(f'{settings.TELEGRAM_WEBHOOK_PATH.strip("/")}/', include('telegram_bot.urls')),
+
+    path('api/public/', include('landing_api.urls')),
 ]
 
 

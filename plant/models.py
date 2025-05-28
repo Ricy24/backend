@@ -134,3 +134,26 @@ class Plant(models.Model):
 #
 #     def __str__(self):
 #         return f"Cuidado por {self.user.id} en {self.action_date}"
+
+class PlantDesign(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Nombre del diseño")
+    design_key = models.CharField(max_length=100, unique=True, verbose_name="Clave del diseño")
+    description = models.TextField(blank=True, verbose_name="Descripción")
+    image_url = models.URLField(verbose_name="URL de la imagen")
+    plant_type = models.CharField(
+        max_length=20,
+        choices=[('planta', 'Planta'), ('arbol', 'Árbol'), ('ambos', 'Ambos')],
+        default='planta',
+        verbose_name="Tipo de planta"
+    )
+    is_active = models.BooleanField(default=True, verbose_name="Activo")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Diseño de Planta"
+        verbose_name_plural = "Diseños de Plantas"
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_plant_type_display()})"
