@@ -38,6 +38,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://localhost:5174",
     "http://localhost:4321",
+    "https://www.senti.lat",
     
 ]
 
@@ -201,6 +202,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://senti.lat",
     "http://localhost:5174",
     "http://localhost:4321", 
+    "https://www.senti.lat",
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales
