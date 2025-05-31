@@ -38,7 +38,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://localhost:5174",
     "http://localhost:4321",
-    
+    "https://www.senti.lat",
 ]
 
 # Configuración de CORS
@@ -200,11 +200,12 @@ CORS_ALLOWED_ORIGINS = [
     "https://app.senti.lat", 
     "https://senti.lat",
     "http://localhost:5174",
+    "https://www.senti.lat",
     "http://localhost:4321", 
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales
-CORS_ALLOW_ALL_ORIGINS = False  # Evita el uso de comodín (*)
+CORS_ALLOW_ALL_ORIGINS = True  # Evita el uso de comodín (*)
 
 
 
