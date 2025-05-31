@@ -202,6 +202,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5174",
     "https://www.senti.lat",
     "http://localhost:4321", 
+    "https://www.senti.lat",
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Necesario para enviar cookies y tokens con credenciales

@@ -991,25 +991,41 @@ class GoogleLogin(APIView):
                 if not email_success:
                     logger.warning(f"No se pudo enviar el correo de bienvenida a {user.email}")
 
-                # --- INICIO: Enviar mensaje de WhatsApp (SOLO SI ES NUEVO Y TIENE TELÉFONO) ---
-                if user.telefono: # Google a menudo no da el teléfono. Este campo podría estar vacío.
-                                  # El usuario podría necesitar añadirlo más tarde.
-                    phone_number_for_whatsapp = user.telefono # Ajusta si es necesario
+  ### CAMBIO AQUÍ: Mensaje de WhatsApp para GoogleLogin ###
+                if user.telefono:
+                    phone_number_for_whatsapp = user.telefono
+                    user_display_name = user.nombre or user.email.split('@')[0]
                     
-                    welcome_message_google = f"""¡Hola {user.nombre or user.email.split('@')[0]}! 👋 Gracias por unirte a Senti con tu cuenta de Google.
+                    # Mensaje de bienvenida
+                    main_text = f"""¡Hola {user_display_name}! 👋 Gracias por unirte a Senti con tu cuenta de Google.
 
 Descubre un espacio para tu bienestar con:
 ✨ Retos diarios que te inspirarán.
 👩‍⚕️ Psicólogos listos para escucharte.
 
 ¡Recuerda que tu primera sesión de 30 minutos es GRATUITA! 🌟
-Explora y agenda: [https://app.senti.lat/dashboard]
+Explora y agenda aquí: https://app.senti.lat/dashboard
 
 ¡Bienvenid@ a la comunidad Senti!"""
+
+                    # Contenido para el mensaje con botones
+                    whatsapp_content = {
+                        "text": main_text,
+                        "footer": "Equipo Senti.lat ✨", # Pie de página opcional
+                        "buttons": [
+                            {"id": "explorar_dashboard_google", "text": "🚀 Explorar Ahora"},
+                            {"id": "ver_psicologos_google", "text": "👩‍⚕️ Ver Psicólogos"}
+                        ]
+                    }
                     
-                    logger.info(f"Intentando enviar WhatsApp de bienvenida (Google Login) a {phone_number_for_whatsapp} para el usuario {user.email}")
+                    logger.info(f"Intentando enviar WhatsApp de bienvenida con botones (Google Login) a {phone_number_for_whatsapp} para el usuario {user.email}")
                     
-                    wa_success, wa_response = send_whatsapp_message(phone_number_for_whatsapp, welcome_message)
+                    wa_success, wa_response = send_whatsapp_message(
+                        phone_number=phone_number_for_whatsapp,
+                        message_type="buttons", # Indicamos que es un mensaje con botones
+                        content_data=whatsapp_content, # Pasamos la estructura de los botones
+                        message_text_fallback=f"Bienvenida Google para {user_display_name}" # Para logs
+                    )
                     
                     if wa_success:
                         logger.info(f"WhatsApp de bienvenida (Google Login) enviado exitosamente a {phone_number_for_whatsapp}. Respuesta: {wa_response}")
@@ -1017,7 +1033,7 @@ Explora y agenda: [https://app.senti.lat/dashboard]
                         logger.error(f"Error al enviar WhatsApp de bienvenida (Google Login) a {phone_number_for_whatsapp}. Error: {wa_response}")
                 else:
                     logger.info(f"No se envió WhatsApp de bienvenida (Google Login) a {user.email} porque no se proporcionó/obtuvo número de teléfono.")
-                # --- FIN: Enviar mensaje de WhatsApp ---
+                ### FIN CAMBIO AQUÍ ###
 
             # El resto de la lógica de login es para ambos (nuevos y existentes)
             refresh = RefreshToken.for_user(user)
@@ -1083,12 +1099,11 @@ class RegisterView(APIView):
                     logger.warning(f"No se pudo enviar el correo de bienvenida a {user.email}")
 
                 # --- INICIO: Enviar mensaje de WhatsApp ---
-                if user.telefono: # Solo si el usuario proporcionó un teléfono
-                    # Asegúrate que el formato del user.telefono sea el esperado por Baileys (ej: "521XXXXXXXXXX")
-                    # Puede que necesites limpiar/formatear el número aquí si no lo está ya
-                    phone_number_for_whatsapp = user.telefono # Ajusta si es necesario
-                    
-                    welcome_message = f"""¡Hola {user.nombre or user.email.split('@')[0]}! 🎉 ¡Te damos la bienvenida oficial a Senti!
+                if user.telefono:
+                    phone_number_for_whatsapp = user.telefono
+                    user_display_name = user.nombre or user.email.split('@')[0]
+
+                    main_text = f"""¡Hola {user_display_name}! 🎉 ¡Te damos la bienvenida oficial a Senti!
 
 Prepárate para transformar tu bienestar. En Senti te esperan:
 🔹 Retos diarios que te motivarán.
@@ -1097,22 +1112,35 @@ Prepárate para transformar tu bienestar. En Senti te esperan:
 🚀 ¿Listo para empezar? ¡Tu primera consulta de 30 minutos con un psicólogo es GRATIS!
 Es una gran oportunidad para conocernos y explorar cómo podemos ayudarte.
 
-Reserva tu sesión gratuita aquí: [https://app.senti.lat/dashboard]
+Reserva tu sesión gratuita aquí: https://app.senti.lat/dashboard
 
 ¡Estamos aquí para ti!
-Senti."""
+Equipo Senti.lat"""
                     
-                    logger.info(f"Intentando enviar WhatsApp de bienvenida a {phone_number_for_whatsapp} para el usuario {user.email}")
+                    whatsapp_content = {
+                        "text": main_text,
+                        "footer": "Tu espacio de bienestar ✨", # Pie de página opcional
+                        "buttons": [
+                            {"id": "reservar_sesion_gratis", "text": "🎁 Reservar Sesión GRATIS"},
+                            {"id": "explorar_retos", "text": "🎯 Ver Retos Diarios"}
+                        ]
+                    }
                     
-                    # Llamada SÍNCRONA (considerar asíncrona para producción)
-                    wa_success, wa_response = send_whatsapp_message(phone_number_for_whatsapp, welcome_message)
+                    logger.info(f"Intentando enviar WhatsApp de bienvenida con botones (Registro) a {phone_number_for_whatsapp} para el usuario {user.email}")
+                    
+                    wa_success, wa_response = send_whatsapp_message(
+                        phone_number=phone_number_for_whatsapp,
+                        message_type="buttons", # Indicamos que es un mensaje con botones
+                        content_data=whatsapp_content, # Pasamos la estructura de los botones
+                        message_text_fallback=f"Bienvenida Registro para {user_display_name}" # Para logs
+                    )
                     
                     if wa_success:
-                        logger.info(f"WhatsApp de bienvenida enviado exitosamente a {phone_number_for_whatsapp}. Respuesta: {wa_response}")
+                        logger.info(f"WhatsApp de bienvenida (Registro) enviado exitosamente a {phone_number_for_whatsapp}. Respuesta: {wa_response}")
                     else:
-                        logger.error(f"Error al enviar WhatsApp de bienvenida a {phone_number_for_whatsapp}. Error: {wa_response}")
+                        logger.error(f"Error al enviar WhatsApp de bienvenida (Registro) a {phone_number_for_whatsapp}. Error: {wa_response}")
                 else:
-                    logger.info(f"No se envió WhatsApp de bienvenida a {user.email} porque no se proporcionó número de teléfono.")
+                    logger.info(f"No se envió WhatsApp de bienvenida (Registro) a {user.email} porque no se proporcionó número de teléfono.")
                 # --- FIN: Enviar mensaje de WhatsApp ---
 
                 if token_invitacion:
