@@ -98,9 +98,16 @@ class PsychologistProfile(models.Model):
         null=True,
         help_text="Enfoque terapéutico, ej. 'Cognitivo-conductual'"
     )
+
     offers_free_30min_session = models.BooleanField(
         default=False,
         help_text="Indica si la psicóloga ofrece una sesión gratuita de 30 minutos"
+    )
+
+    profile_visibility = models.BooleanField(
+        default=True,
+        verbose_name="Visibilidad del Perfil",
+        help_text="Marca esta casilla si quieres que tu perfil aparezca en el listado público del marketplace."
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -43,6 +43,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Configuración de CORS
 INSTALLED_APPS = [
+    'django_filters',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -79,6 +80,7 @@ INSTALLED_APPS = [
     'spotify_insights',
     'telegram_bot',
     'landing_api',
+    'marketplace', 
     
 ]
 

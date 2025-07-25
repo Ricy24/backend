@@ -20,12 +20,11 @@ User = get_user_model()
 class GroupPlantCareTest(APITestCase):
 
     def setUp(self):
-        # ... (tu setUp sin cambios, asegurándote que user1 y user2 se crean) ...
         self.user1 = User.objects.create_user(email='testpareja1@example.com', password='password123', nombre='Pareja Uno')
         self.user2 = User.objects.create_user(email='testpareja2@example.com', password='password123', nombre='Pareja Dos')
         self.terapia = Terapia.objects.create(tipo='pareja') # Corregido
-        MiembroTerapia.objects.create(usuario=self.user1, terapia=self.terapia, es_lider=True)
-        MiembroTerapia.objects.create(usuario=self.user2, terapia=self.terapia, es_lider=False)
+        MiembroTerapia.objects.create(usuario=self.user1, terapia=self.terapia)
+        MiembroTerapia.objects.create(usuario=self.user2, terapia=self.terapia)
         yesterday = timezone.localdate() - timedelta(days=1)
         self.plant = Plant.objects.create(
             terapia=self.terapia, name="Planta Grupal Test", design="default_plant",

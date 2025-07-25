@@ -18,11 +18,12 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('dashboard/', include('dashboard.urls')),
     path('calendar/', include('google_calendar.urls')),
-    # path('therapy/', include('therapy.urls')), # <-- LÍNEA ORIGINAL
+    # Comentar esta línea
+    # path('api/comunidad/', include('community.urls')),
     path('therapy/', include(('therapy.urls', 'therapy'), namespace='therapy')), # <-- LÍNEA CORREGIDA
     path('api/psychologist/', include('psychologist.urls')),
+    path('api/marketplace/', include('marketplace.urls')),
     path('api/invitations/', include('invitations.urls')),
-    path('api/comunidad/', include('community.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/pagos/', include('pagos.urls')),
     path('api/profile/', include('user_profile.urls')),

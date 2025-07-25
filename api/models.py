@@ -102,42 +102,23 @@ class Usuario(AbstractUser):
 class Terapia(models.Model):
     TIPO_CHOICES = [
         ('individual', 'Individual'),
-        ('pareja', 'Pareja'),
-        ('familiar', 'Familiar'),
     ]
-    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
-    nombre_familia = models.CharField(max_length=100, blank=True, null=True)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='individual')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     herramientas = models.JSONField(default=dict, blank=True)
     event = models.ForeignKey('google_calendar.CalendarEvent', on_delete=models.CASCADE, related_name='terapias', null=True, blank=True)
-    combined_diagnosis = models.TextField(blank=True, null=True)
 
     @property
     def limite_miembros(self):
-        if self.tipo == 'familiar':
-            return 5
-        elif self.tipo == 'pareja':
-            return 2
-        elif self.tipo == 'individual':
-            return 1
-        return 0
+        return 1
 
     def __str__(self):
-        return f"Terapia {self.tipo} - {self.nombre_familia or self.id}"
+        return f"Terapia {self.tipo} - {self.id}"
     
 # Modelo MiembroTerapia
 class MiembroTerapia(models.Model):
-    ROLES_FAMILIA = [
-        ('padre', 'Padre'),
-        ('madre', 'Madre'),
-        ('hijo', 'Hijo'),
-        ('hija', 'Hija'),
-        ('otro', 'Otro'),
-    ]
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
     terapia = models.ForeignKey(Terapia, on_delete=models.CASCADE)
-    es_lider = models.BooleanField(default=False)
-    rol = models.CharField(max_length=20, choices=ROLES_FAMILIA, blank=True, null=True)
     fecha_union = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -165,11 +146,7 @@ class InitialAssessment(models.Model):
     diagnosis = models.TextField(blank=True)
     therapy_recommendations = models.TextField(blank=True)
     sessions_needed = models.IntegerField(default=0)
-    therapy_type = models.CharField(max_length=50, blank=True, choices=[
-        ('individual', 'Terapia Individual'),
-        ('couple', 'Terapia de Pareja'),
-        ('family', 'Terapia Familiar'),
-    ])
+    therapy_type = models.CharField(max_length=50, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

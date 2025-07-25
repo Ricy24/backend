@@ -26,8 +26,7 @@ from groq import Groq
 from datetime import datetime
 from dashboard.views import calculate_wellness_days
 from dashboard.models import Mood
-from community.views import Post 
-from community.models import Post 
+ 
 from emails.utils import send_brevo_email
 
 from chat.models import ChatConfig
@@ -47,47 +46,23 @@ GROQ_CLIENT = Groq(api_key=GROQ_API_KEY)
 def generate_diagnosis_and_recommendations(responses):
     """
     Genera un diagnóstico, recomendaciones y métricas basadas en las respuestas
-    de la evaluación inicial.
+    de la evaluación inicial para terapia individual.
     """
-    support_choice = responses.get('support_choice', 'personal')
-    therapy_type = {'personal': 'individual', 'couple': 'couple', 'family': 'family'}.get(support_choice, 'individual')
-
     # --- Inicialización de variables ---
-    diagnostic_keys, goal_keys, labels = [], [], {}
+    diagnostic_keys = ['p1', 'p2', 'p3']
+    goal_keys = ['pg1', 'pg2', 'pg3']
+    labels = {
+        'p1': 'Emociones abrumadoras', 
+        'p2': 'Dificultad para resolver problemas',
+        'p3': 'Evitación de actividades por falta de motivación'
+    }
+    
     diagnosis = "No se pudo generar un diagnóstico inicial." # Valor por defecto
     recommendations = []
     sessions_needed = 0
     severity = 'unknown'
     metrics = {}
     goals = {}
-
-    # --- Definir claves y etiquetas según tipo de apoyo ---
-    if support_choice == 'personal':
-        diagnostic_keys = ['p1', 'p2', 'p3']
-        goal_keys = ['pg1', 'pg2', 'pg3']
-        labels = {
-            'p1': 'Emociones abrumadoras', 'p2': 'Dificultad para resolver problemas',
-            'p3': 'Evitación de actividades por falta de motivación'
-        }
-    elif support_choice == 'couple':
-        diagnostic_keys = ['c1', 'c2', 'c3']
-        goal_keys = ['cg1', 'cg2', 'cg3']
-        labels = {
-            'c1': 'Frecuencia de desacuerdos', 'c2': 'Insuficiencia en comunicación',
-            'c3': 'Desconexión emocional'
-        }
-    elif support_choice == 'family':
-        diagnostic_keys = ['f1', 'f2', 'f3']
-        goal_keys = ['fg1', 'fg2', 'fg3']
-        labels = {
-            'f1': 'Conflictos significativos', 'f2': 'Deficiencia en comunicación',
-            'f3': 'Necesidades emocionales no atendidas'
-        }
-    else:
-        # Caso: support_choice inválido o no proporcionado
-        logger.warning(f"Support choice inválido o no reconocido: {support_choice}. Usando valores por defecto.")
-        diagnosis = "Tipo de apoyo no reconocido. No se puede generar diagnóstico detallado."
-        # Las variables ya están inicializadas con valores por defecto
 
     # --- Calcular puntuaciones y métricas (solo si hay claves) ---
     diagnostic_score = 0
@@ -119,147 +94,65 @@ def generate_diagnosis_and_recommendations(responses):
         logger.info("No se definieron claves diagnósticas, no se calcularán scores ni métricas.")
 
 
-    # --- Generar diagnóstico y recomendaciones detallados (si no hubo error y hay métricas) ---
+    # --- Generate diagnosis and recommendations (only if no errors and we have metrics) ---
     if severity != 'error' and metrics:
-        if support_choice == 'personal':
-            if severity == 'low':
-                diagnosis = f"""Tu bienestar emocional parece estar en un estado generalmente estable. Las dificultades que enfrentas, como sentirte abrumado por tus emociones ({metrics.get('p1', {}).get('score', 'N/A')}%), tener problemas para resolver situaciones sin apoyo ({metrics.get('p2', {}).get('score', 'N/A')}%) o evitar actividades por falta de motivación ({metrics.get('p3', {}).get('score', 'N/A')}%), son mínimas y no parecen interferir significativamente en tu vida diaria. Esto sugiere una buena capacidad de afrontamiento, aunque hay áreas que podrías fortalecer para prevenir futuros desafíos."""
-                recommendations = [
-                    "Lleva un diario emocional para identificar patrones en tus estados de ánimo (5-10 min diarios).",
-                    "Practica técnicas de respiración diafragmática para mantener la calma en momentos de estrés.",
-                    "Establece metas pequeñas y alcanzables para aumentar tu sentido de logro y motivación."
-                ]
-                sessions_needed = 2
-            elif severity == 'moderate':
-                diagnosis = f"""Presentas un nivel moderado de desafíos en tu bienestar personal. Las emociones abrumadoras alcanzan un {metrics.get('p1', {}).get('score', 'N/A')}%, lo que indica que en ocasiones te sientes superado por lo que sientes. La dificultad para resolver problemas sin ayuda ({metrics.get('p2', {}).get('score', 'N/A')}%) sugiere una posible dependencia de apoyo externo, y la evitación de actividades por falta de motivación ({metrics.get('p3', {}).get('score', 'N/A')}%) podría estar afectando tu productividad o satisfacción personal. Esto podría reflejar estrés acumulado o una autoestima ligeramente comprometida, pero con intervención adecuada, puedes recuperar el equilibrio."""
-                recommendations = [
-                    "Inicia con técnicas de manejo del estrés, como la relajación progresiva de Jacobson (15 min diarios).",
-                    "Dedica tiempo semanal a una actividad placentera que refuerce tu motivación (ej., paseos, hobbies).",
-                    "Practica afirmaciones positivas diarias para fortalecer tu autoestima.",
-                    "Considera una consulta psicológica para explorar las causas de estas dificultades."
-                ]
-                sessions_needed = 6
-            elif severity == 'high':
-                diagnosis = f"""Estás enfrentando desafíos significativos en tu bienestar personal. Con un nivel de emociones abrumadoras de {metrics.get('p1', {}).get('score', 'N/A')}%, es probable que sientas ansiedad o desbordamiento emocional con frecuencia. La dificultad para resolver problemas sin ayuda ({metrics.get('p2', {}).get('score', 'N/A')}%) podría indicar una baja confianza en tus habilidades de afrontamiento, y la evitación de actividades ({metrics.get('p3', {}).get('score', 'N/A')}%) sugiere un impacto notable en tu vida diaria, posiblemente relacionado con síntomas depresivos o agotamiento. Este patrón merece atención profesional para evitar que se agrave."""
-                recommendations = [
-                    "Implementa un plan estructurado de manejo emocional, como la técnica de 'tiempo fuera' (20-30 min diarios).",
-                    "Busca apoyo psicológico urgente para trabajar en estrategias de afrontamiento.",
-                    "Incorpora actividades placenteras en una rutina diaria para contrarrestar la evitación.",
-                    "Apóyate en amigos o familia como red de soporte inicial."
-                ]
-                sessions_needed = 10
-            elif severity == 'very_high':
-                diagnosis = f"""Tu bienestar personal está en un estado crítico. Las emociones abrumadoras alcanzan un {metrics.get('p1', {}).get('score', 'N/A')}%, lo que sugiere una posible presencia de ansiedad generalizada o estrés severo. La dificultad extrema para resolver problemas sin ayuda ({metrics.get('p2', {}).get('score', 'N/A')}%) podría reflejar una percepción de impotencia, y la alta evitación de actividades ({metrics.get('p3', {}).get('score', 'N/A')}%) apunta a un retraimiento significativo, potencialmente vinculado a depresión o burnout. Es crucial actuar de inmediato para proteger tu salud mental."""
-                recommendations = [
-                    "Consulta a un psicólogo o psiquiatra lo antes posible para una evaluación completa.",
-                    "Prueba la técnica de grounding (5-4-3-2-1) para reducir la intensidad emocional en crisis.",
-                    "Establece una rutina mínima con apoyo externo para recuperar funcionalidad.",
-                    "Considera informar a un ser querido para que te acompañe en este proceso."
-                ]
-                sessions_needed = 14
+        if severity == 'low':
+            diagnosis = f"""Tu bienestar emocional parece estar en un estado generalmente estable. Las dificultades que enfrentas, como sentirte abrumado por tus emociones ({metrics.get('p1', {}).get('score', 'N/A')}%), tener problemas para resolver situaciones sin apoyo ({metrics.get('p2', {}).get('score', 'N/A')}%) o evitar actividades por falta de motivación ({metrics.get('p3', {}).get('score', 'N/A')}%), son mínimas y no parecen interferir significativamente en tu vida diaria. Esto sugiere una buena capacidad de afrontamiento, aunque hay áreas que podrías fortalecer para prevenir futuros desafíos."""
+            recommendations = [
+                "Lleva un diario emocional para identificar patrones en tus estados de ánimo (5-10 min diarios).",
+                "Practica técnicas de respiración diafragmática para mantener la calma en momentos de estrés.",
+                "Establece metas pequeñas y alcanzables para aumentar tu sentido de logro y motivación."
+            ]
+            sessions_needed = 2
+        elif severity == 'moderate':
+            diagnosis = f"""Presentas un nivel moderado de desafíos en tu bienestar personal. Las emociones abrumadoras alcanzan un {metrics.get('p1', {}).get('score', 'N/A')}%, lo que indica que en ocasiones te sientes superado por lo que sientes. La dificultad para resolver problemas sin ayuda ({metrics.get('p2', {}).get('score', 'N/A')}%) sugiere una posible dependencia de apoyo externo, y la evitación de actividades por falta de motivación ({metrics.get('p3', {}).get('score', 'N/A')}%) podría estar afectando tu productividad o satisfacción personal. Esto podría reflejar estrés acumulado o una autoestima ligeramente comprometida, pero con intervención adecuada, puedes recuperar el equilibrio."""
+            recommendations = [
+                "Inicia con técnicas de manejo del estrés, como la relajación progresiva de Jacobson (15 min diarios).",
+                "Dedica tiempo semanal a una actividad placentera que refuerce tu motivación (ej., paseos, hobbies).",
+                "Practica afirmaciones positivas diarias para fortalecer tu autoestima.",
+                "Considera una consulta psicológica para explorar las causas de estas dificultades."
+            ]
+            sessions_needed = 6
+        elif severity == 'high':
+            diagnosis = f"""Estás enfrentando desafíos significativos en tu bienestar personal. Con un nivel de emociones abrumadoras de {metrics.get('p1', {}).get('score', 'N/A')}%, es probable que sientas ansiedad o desbordamiento emocional con frecuencia. La dificultad para resolver problemas sin ayuda ({metrics.get('p2', {}).get('score', 'N/A')}%) podría indicar una baja confianza en tus habilidades de afrontamiento, y la evitación de actividades ({metrics.get('p3', {}).get('score', 'N/A')}%) sugiere un impacto notable en tu vida diaria, posiblemente relacionado con síntomas depresivos o agotamiento. Este patrón merece atención profesional para evitar que se agrave."""
+            recommendations = [
+                "Implementa un plan estructurado de manejo emocional, como la técnica de 'tiempo fuera' (20-30 min diarios).",
+                "Busca apoyo psicológico urgente para trabajar en estrategias de afrontamiento.",
+                "Incorpora actividades placenteras en una rutina diaria para contrarrestar la evitación.",
+                "Apóyate en amigos o familia como red de soporte inicial."
+            ]
+            sessions_needed = 10
+        elif severity == 'very_high':
+            diagnosis = f"""Tu bienestar personal está en un estado crítico. Las emociones abrumadoras alcanzan un {metrics.get('p1', {}).get('score', 'N/A')}%, lo que sugiere una posible presencia de ansiedad generalizada o estrés severo. La dificultad extrema para resolver problemas sin ayuda ({metrics.get('p2', {}).get('score', 'N/A')}%) podría reflejar una percepción de impotencia, y la alta evitación de actividades ({metrics.get('p3', {}).get('score', 'N/A')}%) apunta a un retraimiento significativo, potencialmente vinculado a depresión o burnout. Es crucial actuar de inmediato para proteger tu salud mental."""
+            recommendations = [
+                "Consulta a un psicólogo o psiquiatra lo antes posible para una evaluación completa.",
+                "Prueba la técnica de grounding (5-4-3-2-1) para reducir la intensidad emocional en crisis.",
+                "Establece una rutina mínima con apoyo externo para recuperar funcionalidad.",
+                "Considera informar a un ser querido para que te acompañe en este proceso."
+            ]
+            sessions_needed = 14
 
-            # Recomendaciones por metas (con verificación de existencia de claves)
-            if goal_keys and len(goal_keys) > 0 and goals.get(goal_keys[0], 0) > 2: recommendations.append("Aprende la técnica de 'parada de pensamiento' para interrumpir patrones de estrés.")
-            if goal_keys and len(goal_keys) > 1 and goals.get(goal_keys[1], 0) > 2: recommendations.append("Realiza ejercicios de gratitud diarios (anota 3 cosas positivas cada día).")
-            if goal_keys and len(goal_keys) > 2 and goals.get(goal_keys[2], 0) > 2: recommendations.append("Practica el modelo de resolución de problemas estructurado: define, analiza, actúa.")
+        # Add goal-specific recommendations
+        if goals.get('pg1', 0) > 2: 
+            recommendations.append("Aprende la técnica de 'parada de pensamiento' para interrumpir patrones de estrés.")
+        if goals.get('pg2', 0) > 2: 
+            recommendations.append("Realiza ejercicios de gratitud diarios (anota 3 cosas positivas cada día).")
+        if goals.get('pg3', 0) > 2: 
+            recommendations.append("Practica el modelo de resolución de problemas estructurado: define, analiza, actúa.")
 
-        elif support_choice == 'couple':
-            if severity == 'low':
-                diagnosis = f"""Tu relación de pareja parece estable, con desafíos menores. Los desacuerdos ocurren con una frecuencia de {metrics.get('c1', {}).get('score', 'N/A')}%, lo que es normal en cualquier dinámica interpersonal. La comunicación, con un {metrics.get('c2', {}).get('score', 'N/A')}%, es adecuada en general, y la desconexión emocional ({metrics.get('c3', {}).get('score', 'N/A')}%) no parece ser un problema significativo. Esto indica una base sólida, pero hay espacio para mejorar la conexión y prevenir tensiones futuras."""
-                recommendations = [
-                    "Dedica 10-15 minutos diarios a conversar con tu pareja sobre temas cotidianos o emociones.",
-                    "Planifica una actividad semanal juntos (ej., cena, paseo) para fortalecer el vínculo.",
-                    "Practica escucha activa: repite lo que tu pareja dice para confirmar comprensión."
-                ]
-                sessions_needed = 3
-            elif severity == 'moderate':
-                diagnosis = f"""Tu relación enfrenta dificultades moderadas. Los desacuerdos frecuentes ({metrics.get('c1', {}).get('score', 'N/A')}%) sugieren tensiones recurrentes que podrían derivar de malentendidos o expectativas no alineadas. La comunicación insuficiente ({metrics.get('c2', {}).get('score', 'N/A')}%) indica barreras en la expresión o comprensión mutua, y la desconexión emocional ({metrics.get('c3', {}).get('score', 'N/A')}%) podría estar erosionando la intimidad. Aunque manejable, este patrón requiere atención para evitar un deterioro mayor."""
-                recommendations = [
-                    "Establece un 'momento de pareja' semanal para discutir temas importantes sin interrupciones.",
-                    "Practica la técnica de 'hablar en primera persona' (ej., 'me siento...' en lugar de 'tú haces...').",
-                    "Planifica actividades recreativas conjuntas para reconectar emocionalmente.",
-                    "Considera terapia de pareja si las tensiones persisten."
-                ]
-                sessions_needed = 8
-            elif severity == 'high':
-                diagnosis = f"""Tu relación presenta problemas significativos. La alta frecuencia de desacuerdos ({metrics.get('c1', {}).get('score', 'N/A')}%) apunta a conflictos recurrentes que podrían estar afectando la estabilidad emocional de ambos. La comunicación insuficiente ({metrics.get('c2', {}).get('score', 'N/A')}%) sugiere una ruptura en el diálogo, y la desconexión emocional marcada ({metrics.get('c3', {}).get('score', 'N/A')}%) podría indicar una crisis relacional. Es probable que haya resentimientos acumulados o necesidades no satisfechas que requieren intervención urgente."""
-                recommendations = [
-                    "Inicia diálogos estructurados (20-30 min) con reglas claras: sin interrupciones, solo escucha.",
-                    "Busca apoyo profesional urgente para mediar y reparar la dinámica.",
-                    "Escribe cartas positivas a tu pareja para reconectar desde un lugar seguro.",
-                    "Establece límites claros para reducir conflictos mientras trabajas en la relación."
-                ]
-                sessions_needed = 12
-            elif severity == 'very_high':
-                diagnosis = f"""Tu relación está en una crisis severa. Los desacuerdos constantes ({metrics.get('c1', {}).get('score', 'N/A')}%) reflejan un nivel crítico de conflicto, posiblemente con enfrentamientos frecuentes. La comunicación casi inexistente ({metrics.get('c2', {}).get('score', 'N/A')}%) indica un colapso en el intercambio emocional, y la desconexión extrema ({metrics.get('c3', {}).get('score', 'N/A')}%) sugiere una alienación profunda. Este estado podría derivar en una ruptura si no se interviene de inmediato."""
-                recommendations = [
-                    "Consulta a un terapeuta de pareja urgentemente para evaluar la viabilidad de la relación.",
-                    "Establece un 'alto al fuego' temporal: evita discusiones hasta la primera sesión.",
-                    "Prueba ejercicios de reconexión básicos (ej., recordar momentos felices juntos).",
-                    "Evalúa individualmente tus necesidades y expectativas para clarificar el camino."
-                ]
-                sessions_needed = 16
-
-            # Recomendaciones por metas
-            if goal_keys and len(goal_keys) > 0 and goals.get(goal_keys[0], 0) > 2: recommendations.append("Participa en un taller de comunicación asertiva con tu pareja.")
-            if goal_keys and len(goal_keys) > 1 and goals.get(goal_keys[1], 0) > 2: recommendations.append("Dedica tiempo a actividades íntimas que refuercen el apego (ej., contacto físico).")
-            if goal_keys and len(goal_keys) > 2 and goals.get(goal_keys[2], 0) > 2: recommendations.append("Aprende la técnica de 'pausa activa': detén una discusión y retoma tras 10 min.")
-
-        elif support_choice == 'family':
-            if severity == 'low':
-                diagnosis = f"""La dinámica familiar es mayormente saludable, con conflictos mínimos ({metrics.get('f1', {}).get('score', 'N/A')}%). La comunicación, aunque no perfecta ({metrics.get('f2', {}).get('score', 'N/A')}%), parece funcional, y las necesidades emocionales no atendidas ({metrics.get('f3', {}).get('score', 'N/A')}%) no son un problema grave. Esto refleja una familia con buena cohesión, pero con oportunidades para fortalecer los lazos y prevenir futuros roces."""
-                recommendations = [
-                    "Organiza una actividad familiar semanal (ej., juego de mesa, comida juntos).",
-                    "Fomenta reuniones breves (10 min) para que todos compartan cómo se sienten.",
-                    "Celebra logros familiares para reforzar la unión."
-                ]
-                sessions_needed = 3
-            elif severity == 'moderate':
-                diagnosis = f"""Tu familia enfrenta dificultades moderadas. Los conflictos significativos ({metrics.get('f1', {}).get('score', 'N/A')}%) indican tensiones ocasionales que podrían surgir de roles poco claros o estrés externo. La comunicación deficiente ({metrics.get('f2', {}).get('score', 'N/A')}%) sugiere que no todos se sienten escuchados, y las necesidades emocionales no atendidas ({metrics.get('f3', {}).get('score', 'N/A')}%) podrían generar frustración. Aunque funcional, la dinámica necesita ajustes para mejorar la armonía."""
-                recommendations = [
-                    "Realiza reuniones familiares semanales (15-20 min) con un turno para cada miembro.",
-                    "Practica escucha activa: parafrasea lo que otros dicen para validar sus emociones.",
-                    "Planifica actividades conjuntas para reducir tensiones y fomentar colaboración.",
-                    "Considera apoyo profesional si los conflictos escalan."
-                ]
-                sessions_needed = 8
-            elif severity == 'high':
-                diagnosis = f"""La dinámica familiar presenta problemas significativos. Los conflictos frecuentes ({metrics.get('f1', {}).get('score', 'N/A')}%) sugieren una falta de resolución efectiva, posiblemente alimentada por malentendidos o dinámicas de poder desbalanceadas. La comunicación muy deficiente ({metrics.get('f2', {}).get('score', 'N/A')}%) indica una barrera en el diálogo, y las necesidades emocionales no atendidas ({metrics.get('f3', {}).get('score', 'N/A')}%) podrían estar generando resentimiento o aislamiento. Es necesario intervenir para restaurar el equilibrio."""
-                recommendations = [
-                    "Inicia reuniones familiares con un moderador (familiar neutral o profesional) si es posible.",
-                    "Busca terapia familiar urgente para abordar las tensiones subyacentes.",
-                    "Establece reglas claras de comunicación (ej., sin interrupciones, turnos para hablar).",
-                    "Promueve actividades de vínculo (ej., proyectos conjuntos) para reconstruir la confianza."
-                ]
-                sessions_needed = 12
-            elif severity == 'very_high':
-                diagnosis = f"""La dinámica familiar está en un estado crítico. Los conflictos severos ({metrics.get('f1', {}).get('score', 'N/A')}%) reflejan una ruptura en la cohesión, posiblemente con enfrentamientos frecuentes o roles disfuncionales. La comunicación casi nula ({metrics.get('f2', {}).get('score', 'N/A')}%) apunta a un colapso en la interacción, y las necesidades emocionales gravemente desatendidas ({metrics.get('f3', {}).get('score', 'N/A')}%) sugieren aislamiento o rechazo entre miembros. Este nivel requiere intervención inmediata para evitar daños duraderos."""
-                recommendations = [
-                    "Consulta a un terapeuta familiar urgentemente para mediar y reestructurar la dinámica.",
-                    "Establece un espacio seguro temporal (ej., acuerdos básicos de respeto).",
-                    "Prueba actividades guiadas de reconexión (ej., cartas de aprecio entre miembros).",
-                    "Evalúa individualmente el impacto emocional para cada miembro."
-                ]
-                sessions_needed = 16
-
-            # Recomendaciones por metas
-            if goal_keys and len(goal_keys) > 0 and goals.get(goal_keys[0], 0) > 2: recommendations.append("Implementa un sistema de comunicación como un 'buzón anónimo' para expresar inquietudes.")
-            if goal_keys and len(goal_keys) > 1 and goals.get(goal_keys[1], 0) > 2: recommendations.append("Practica técnicas de mediación familiar (ej., resolución en 3 pasos).")
-            if goal_keys and len(goal_keys) > 2 and goals.get(goal_keys[2], 0) > 2: recommendations.append("Organiza eventos regulares (ej., cenas mensuales) para fortalecer la unión.")
-
-    # Asegurar que diagnosis tiene un valor si no se asignó antes
-    if 'diagnosis' not in locals() or not diagnosis:
-         diagnosis = "No se pudo generar un diagnóstico detallado con los datos proporcionados."
-         logger.warning(f"Diagnóstico no generado para {support_choice} con severidad {severity}")
+    # Ensure we have a diagnosis value
+    if not diagnosis:
+        diagnosis = "No se pudo generar un diagnóstico detallado con los datos proporcionados."
+        logger.warning(f"No se pudo generar diagnóstico con severidad {severity}")
 
 
-    # --- Retornar resultados ---
+    # --- Return results ---
     return {
-        'diagnosis': diagnosis.strip(), # Limpiar espacios extra
-        'metrics': metrics, # Retornar el diccionario de métricas
+        'diagnosis': diagnosis.strip(),
+        'metrics': metrics,
         'recommendations': recommendations,
         'sessions_needed': sessions_needed,
-        'therapy_type': therapy_type,
+        'therapy_type': 'individual',
         'severity': severity
     }
 # Función auxiliar para generar metas de bienestar sin API externa
@@ -797,7 +690,7 @@ def get_dashboard_data(request):
                 'herramientas': terapia.herramientas,
                 'miembros_count': miembros.count(),
                 'limite_miembros': terapia.limite_miembros,
-                'es_lider': MiembroTerapia.objects.filter(terapia=terapia, usuario=user, es_lider=True).exists(),
+                
                 'shared_moods': shared_moods if terapia.tipo in ['pareja', 'familiar'] else [],
             })
         
@@ -906,7 +799,6 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
         recaptcha_response = request.data.get('recaptcha_response')
-        token_invitacion = request.data.get('token')
 
         if not email or not password:
             return Response({'error': 'Email y contraseña son obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
@@ -922,28 +814,13 @@ class LoginView(APIView):
             user.save()
             refresh = RefreshToken.for_user(user)
 
-            if token_invitacion:
-                self.procesar_invitacion(user, token_invitacion)
-
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
-                'is_psychologist': user.is_psychologist
+                'is_psychologist': user.is_psychologist,
+                'is_new_user': user.is_new_user
             }, status=status.HTTP_200_OK)
         return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
-
-    def procesar_invitacion(self, user, token):
-        try:
-            invitacion = InvitacionTerapia.objects.get(token=token, usado=False)
-            terapia = invitacion.terapia
-            if not MiembroTerapia.objects.filter(usuario=user, terapia=terapia).exists():
-                num_miembros = MiembroTerapia.objects.filter(terapia=terapia).count()
-                if num_miembros < terapia.limite_miembros:
-                    MiembroTerapia.objects.create(usuario=user, terapia=terapia, es_lider=False)
-                    invitacion.usado = True
-                    invitacion.save()
-        except InvitacionTerapia.DoesNotExist:
-            pass
 
 class GoogleLogin(APIView):
     permission_classes = [AllowAny]
@@ -1035,11 +912,8 @@ Explora y agenda aquí: https://app.senti.lat/dashboard
                     logger.info(f"No se envió WhatsApp de bienvenida (Google Login) a {user.email} porque no se proporcionó/obtuvo número de teléfono.")
                 ### FIN CAMBIO AQUÍ ###
 
-            # El resto de la lógica de login es para ambos (nuevos y existentes)
+            # Generate tokens for the user
             refresh = RefreshToken.for_user(user)
-
-            if token_invitacion:
-                self.procesar_invitacion(user, token_invitacion)
 
             return Response({
                 'access': str(refresh.access_token),
@@ -1053,18 +927,7 @@ Explora y agenda aquí: https://app.senti.lat/dashboard
         except Exception as e: # Captura genérica para otros errores inesperados
             logger.error(f"Error inesperado en GoogleLogin: {str(e)}", exc_info=True)
             return Response({'error': 'Ocurrió un error interno inesperado.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    def procesar_invitacion(self, user, token):
-        try:
-            invitacion = InvitacionTerapia.objects.get(token=token, usado=False)
-            terapia = invitacion.terapia
-            if not MiembroTerapia.objects.filter(usuario=user, terapia=terapia).exists():
-                num_miembros = MiembroTerapia.objects.filter(terapia=terapia).count()
-                if num_miembros < terapia.limite_miembros:
-                    MiembroTerapia.objects.create(usuario=user, terapia=terapia, es_lider=False)
-                    invitacion.usado = True
-                    invitacion.save()
-        except InvitacionTerapia.DoesNotExist:
-            pass
+
 
 # views.py
 class RegisterView(APIView):
@@ -1072,7 +935,6 @@ class RegisterView(APIView):
 
     def post(self, request):
         recaptcha_response = request.data.get('recaptcha_response')
-        token_invitacion = request.data.get('token')
 
         if not validate_recaptcha(recaptcha_response):
             return Response({'error': 'Validación de reCAPTCHA fallida'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1083,7 +945,7 @@ class RegisterView(APIView):
                 user = serializer.save() # El usuario se crea aquí
                 refresh = RefreshToken.for_user(user)
 
-                # Enviar correo de bienvenida (tu código existente)
+                # Enviar correo de bienvenida
                 context = {
                     'nombre': user.nombre or user.email.split('@')[0],
                     'dashboard_url': f"{settings.FRONTEND_URL}/dashboard",
@@ -1098,13 +960,12 @@ class RegisterView(APIView):
                 if not email_success:
                     logger.warning(f"No se pudo enviar el correo de bienvenida a {user.email}")
 
-                # --- INICIO: Enviar mensaje de WhatsApp ---
+                # Enviar mensaje de WhatsApp si el usuario tiene teléfono
                 if user.telefono:
                     phone_number_for_whatsapp = user.telefono
                     user_display_name = user.nombre or user.email.split('@')[0]
 
                     main_text = f"""¡Hola {user_display_name}! 🎉 ¡Te damos la bienvenida oficial a Senti!
-
 Prepárate para transformar tu bienestar. En Senti te esperan:
 🔹 Retos diarios que te motivarán.
 🔹 Acceso a psicólogos expertos.
@@ -1119,7 +980,7 @@ Equipo Senti.lat"""
                     
                     whatsapp_content = {
                         "text": main_text,
-                        "footer": "Tu espacio de bienestar ✨", # Pie de página opcional
+                        "footer": "Tu espacio de bienestar ✨",
                         "buttons": [
                             {"id": "reservar_sesion_gratis", "text": "🎁 Reservar Sesión GRATIS"},
                             {"id": "explorar_retos", "text": "🎯 Ver Retos Diarios"}
@@ -1130,46 +991,28 @@ Equipo Senti.lat"""
                     
                     wa_success, wa_response = send_whatsapp_message(
                         phone_number=phone_number_for_whatsapp,
-                        message_type="buttons", # Indicamos que es un mensaje con botones
-                        content_data=whatsapp_content, # Pasamos la estructura de los botones
-                        message_text_fallback=f"Bienvenida Registro para {user_display_name}" # Para logs
+                        message_type="buttons",
+                        content_data=whatsapp_content,
+                        message_text_fallback=f"Bienvenida Registro para {user_display_name}"
                     )
                     
                     if wa_success:
                         logger.info(f"WhatsApp de bienvenida (Registro) enviado exitosamente a {phone_number_for_whatsapp}. Respuesta: {wa_response}")
                     else:
                         logger.error(f"Error al enviar WhatsApp de bienvenida (Registro) a {phone_number_for_whatsapp}. Error: {wa_response}")
-                else:
-                    logger.info(f"No se envió WhatsApp de bienvenida (Registro) a {user.email} porque no se proporcionó número de teléfono.")
-                # --- FIN: Enviar mensaje de WhatsApp ---
-
-                if token_invitacion:
-                    self.procesar_invitacion(user, token_invitacion)
 
                 return Response({
                     'access': str(refresh.access_token),
                     'refresh': str(refresh),
-                    'is_psychologist': user.is_psychologist
+                    'is_psychologist': user.is_psychologist,
+                    'is_new_user': user.is_new_user
                 }, status=status.HTTP_201_CREATED)
             except Exception as e:
-                logger.error(f"Error en RegisterView: {str(e)}", exc_info=True) # exc_info=True es bueno para el traceback
-                if "email" in str(e).lower() and "ya existe" in str(e).lower(): # Ser más específico
-                    return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
+                logger.error(f"Error al crear el usuario: {str(e)}", exc_info=True)
                 return Response({'error': 'Error al crear el usuario'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def procesar_invitacion(self, user, token):
-        try:
-            invitacion = InvitacionTerapia.objects.get(token=token, usado=False)
-            terapia = invitacion.terapia
-            if not MiembroTerapia.objects.filter(usuario=user, terapia=terapia).exists():
-                num_miembros = MiembroTerapia.objects.filter(terapia=terapia).count()
-                if num_miembros < terapia.limite_miembros:
-                    MiembroTerapia.objects.create(usuario=user, terapia=terapia, es_lider=False)
-                    invitacion.usado = True
-                    invitacion.save()
-        except InvitacionTerapia.DoesNotExist:
-            pass
+    # Invitation processing removed - Only individual therapy is supported
 
 # views.py
 class UserView(APIView):
@@ -1206,26 +1049,37 @@ class UpdateProfileView(APIView):
         usuario = request.user
         data = request.data
 
-        # Actualizar solo los campos proporcionados
-        if 'nombre' in data:
-            usuario.nombre = data['nombre']
-        if 'telefono' in data:
-            usuario.telefono = data['telefono']
-        if 'gender' in data:
-            usuario.gender = data['gender']
-        if 'birthdate' in data:
-            usuario.birthdate = data['birthdate'] if data['birthdate'] else None
-        if 'country' in data:
-            usuario.country = data['country']
+        # Permitir tanto 'nombre' como 'user.nombre', igual para los demás campos
+        nombre = data.get('nombre') or data.get('user.nombre')
+        telefono = data.get('telefono') or data.get('user.telefono')
+        email = data.get('email') or data.get('user.email')
+        gender = data.get('gender') or data.get('user.gender')
+        birthdate = data.get('birthdate') or data.get('user.birthdate')
+        country = data.get('country') or data.get('user.country')
+
+        if nombre is not None:
+            usuario.nombre = nombre
+        if telefono is not None:
+            usuario.telefono = telefono
+        if email is not None:
+            usuario.email = email
+        if gender is not None:
+            usuario.gender = gender
+        if birthdate is not None:
+            usuario.birthdate = birthdate if birthdate else None
+        if country is not None:
+            usuario.country = country
+
         # Permitir actualizar public_likes si se envía
-        if 'public_likes' in data:
+        public_likes = data.get('public_likes') or data.get('user.public_likes')
+        if public_likes is not None:
             try:
-                usuario.profile.public_likes = data['public_likes']
+                usuario.profile.public_likes = public_likes
                 usuario.profile.save()
             except AttributeError:
                 logger.warning(f"Usuario {usuario.id} no tiene perfil, creando uno")
                 from user_profile.models import UserProfile
-                UserProfile.objects.create(user=usuario, public_likes=data['public_likes'])
+                UserProfile.objects.create(user=usuario, public_likes=public_likes)
 
         try:
             # Validaciones
@@ -1327,254 +1181,155 @@ class CrearTerapiaView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        tipo = request.data.get('tipo')
-        nombre_familia = request.data.get('nombre_familia', '')
-        rol = request.data.get('rol', '')
-
-        logger.info(f"Datos recibidos en /api/terapia/crear/: {request.data}")
-
-        if not tipo:
-            return Response({'error': 'El tipo de terapia es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if tipo not in ['individual', 'pareja', 'familiar']:
-            return Response({'error': 'Tipo de terapia inválido'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if tipo == 'familiar' and not nombre_familia:
-            return Response({'error': 'El nombre de la familia es obligatorio para terapias familiares'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if tipo == 'familiar':
-            valid_roles = [choice[0] for choice in MiembroTerapia.ROLES_FAMILIA]
-            if not rol:
-                return Response({'error': 'El rol es obligatorio para terapias familiares'}, status=status.HTTP_400_BAD_REQUEST)
-            if rol not in valid_roles:
-                return Response({'error': f'Rol inválido. Roles válidos: {valid_roles}'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Configuración de herramientas (sin chat)
-           
-        herramientas = {
-                'individual': {'diario': True, 'progreso_personal': True},
-                    'pareja': {'diario': True, 'ejercicios_pareja': True, 'mood_compartido': True},
-              'familiar': {'diario': True, 'actividades_familiares': True, 'mood_compartido': True}
-            }.get(tipo, {'diario': True})
-
+        logger.info(f"Solicitud de creación de terapia individual recibida de {request.user.email}")
         
+        # Configuración de herramientas para terapia individual
+        herramientas = {
+            'diario': True,
+            'progreso_personal': True
+        }
 
         try:
+            # Crear la terapia individual
             terapia = Terapia.objects.create(
-                tipo=tipo,
-                nombre_familia=nombre_familia if tipo == 'familiar' else None,
+                tipo='individual',  # Siempre individual
                 herramientas=herramientas
             )
 
-            miembro_data = {
-                'usuario': request.user,
-                'terapia': terapia,
-                'es_lider': True
-            }
-            if tipo == 'familiar':
-                miembro_data['rol'] = rol
+            # Crear el miembro (el usuario actual) en la terapia
+            MiembroTerapia.objects.create(
+                usuario=request.user,
+                terapia=terapia
+            )
 
-            MiembroTerapia.objects.create(**miembro_data)
-
-            # Crear configuración del chat
+            # Crear configuración del chat (deshabilitado para terapia individual)
             from chat.models import ChatConfig
-            chat_habilitado = tipo in ['pareja', 'familiar']  # Chat habilitado para pareja y familiar
             ChatConfig.objects.create(
                 terapia=terapia,
-                chat_habilitado=chat_habilitado
+                chat_habilitado=False
             )
 
             serializer = TerapiaSerializer(terapia)
-            logger.info(f"Terapia creada con ID: {terapia.id}")
+            logger.info(f"Terapia individual creada con ID: {terapia.id} para usuario {request.user.email}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
         except Exception as e:
-            logger.error(f"Error creando terapia: {str(e)}")
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class GenerarInvitacionView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, terapia_id):
-        try:
-            terapia = Terapia.objects.get(id=terapia_id)
-            miembro = MiembroTerapia.objects.get(terapia=terapia, usuario=request.user)
-
-            if not miembro.es_lider:
-                return Response(
-                    {'error': 'Solo el líder puede generar invitaciones'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-            token = str(uuid.uuid4())
-            invitacion = InvitacionTerapia.objects.create(
-                terapia=terapia,
-                token=token,
-                creado_por=request.user
+            logger.error(f"Error creando terapia individual: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Error al crear la terapia individual'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            # enlace = f"{settings.FRONTEND_URL}/invitacion/{token}" # <-- YA NO SE NECESITA
-
-            logger.info(f"Invitación (token: {token}) generada para terapia {terapia_id} por {request.user.email}")
-            # Devolver solo el token
-            return Response({'token': token}, status=status.HTTP_201_CREATED) # <-- CAMBIO AQUÍ
-
-        except Terapia.DoesNotExist:
-            logger.error(f"Terapia con ID {terapia_id} no encontrada")
-            return Response({'error': 'Terapia no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-        except MiembroTerapia.DoesNotExist:
-            logger.error(f"El usuario {request.user.email} no es miembro de la terapia {terapia_id}")
-            return Response({'error': 'No eres miembro de esta terapia'}, status=status.HTTP_403_FORBIDDEN)
-        except Exception as e:
-            logger.error(f"Error en GenerarInvitacionView: {str(e)}")
-            # Considerar devolver un error más genérico en producción
-            return Response({'error': 'Error interno al generar invitación.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-class UnirseTerapiaView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        token = request.data.get('token')
-        rol = request.data.get('rol', '')
-
-        logger.info(f"Datos recibidos en /api/terapia/unirse/: {request.data}")
-
-        if not token:
-            return Response({'error': 'Token requerido'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            invitacion = InvitacionTerapia.objects.get(token=token, usado=False)
-            terapia = invitacion.terapia
-
-            if terapia.tipo == 'familiar':
-                valid_roles = [choice[0] for choice in MiembroTerapia.ROLES_FAMILIA]
-                if not rol:
-                    return Response({'error': 'El rol es obligatorio para terapias familiares'}, status=status.HTTP_400_BAD_REQUEST)
-                if rol not in valid_roles:
-                    return Response({'error': f'Rol inválido. Roles válidos: {valid_roles}'}, status=status.HTTP_400_BAD_REQUEST)
-                miembro_data = {
-                    'usuario': request.user,
-                    'terapia': terapia,
-                    'es_lider': False,
-                    'rol': rol
-                }
-            else:
-                miembro_data = {
-                    'usuario': request.user,
-                    'terapia': terapia,
-                    'es_lider': False
-                }
-
-            if MiembroTerapia.objects.filter(usuario=request.user, terapia=terapia).exists():
-                return Response({'error': 'Ya eres miembro de esta terapia'}, status=status.HTTP_400_BAD_REQUEST)
-
-            num_miembros = MiembroTerapia.objects.filter(terapia=terapia).count()
-            if num_miembros >= terapia.limite_miembros:
-                return Response({'error': 'La terapia ha alcanzado el límite de miembros'}, status=status.HTTP_400_BAD_REQUEST)
-
-            MiembroTerapia.objects.create(**miembro_data)
-            invitacion.usado = True
-            invitacion.save()
-            logger.info(f"Usuario {request.user.email} se unió a la terapia {terapia.id}")
-            return Response({
-                'message': 'Te has unido a la terapia exitosamente',
-                'terapia_id': terapia.id
-            }, status=status.HTTP_200_OK)
-        except InvitacionTerapia.DoesNotExist:
-            return Response({'error': 'Invitación inválida o ya usada'}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Error uniéndose a terapia: {str(e)}")
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ListarTerapiasView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """
+        Lista las terapias individuales del usuario actual.
+        Para terapias individuales, cada usuario tiene su propia instancia de terapia.
+        """
         try:
-            miembro_terapias = MiembroTerapia.objects.filter(usuario=request.user).select_related('terapia')
-            terapias = [mt.terapia for mt in miembro_terapias]
-            serializer = TerapiaSerializer(terapias, many=True)
+            # Obtener la terapia individual del usuario actual
+            miembro_terapia = MiembroTerapia.objects.filter(
+                usuario=request.user
+            ).select_related('terapia').first()
             
-            terapias_data = serializer.data
-            for terapia in terapias_data:
-                terapia['fecha_creacion'] = terapia.get('fecha_creacion', timezone.now().isoformat())
-                terapia['miembros_count'] = MiembroTerapia.objects.filter(terapia__id=terapia['id']).count()
-                terapia['limite_miembros'] = terapias[0].limite_miembros if terapias else 1
-                terapia['es_lider'] = MiembroTerapia.objects.filter(
-                    terapia__id=terapia['id'], usuario=request.user, es_lider=True
-                ).exists()
-                # Añadir chat_habilitado
-                try:
-                    chat_config = ChatConfig.objects.get(terapia__id=terapia['id'])
-                    terapia['chat_habilitado'] = chat_config.chat_habilitado
-                    logger.debug(f"ChatConfig para terapia {terapia['id']}: chat_habilitado={chat_config.chat_habilitado}")
-                except ChatConfig.DoesNotExist:
-                    terapia['chat_habilitado'] = False
-                    logger.warning(f"No se encontró ChatConfig para terapia {terapia['id']}")
-                # Lista de miembros
-                miembros = MiembroTerapia.objects.filter(terapia__id=terapia['id']).select_related('usuario')
-                terapia['miembros'] = [
-                    {
-                        'id': miembro.usuario.id,
-                        'nombre': miembro.usuario.nombre if hasattr(miembro.usuario, 'nombre') else miembro.usuario.email.split('@')[0],
-                        'es_lider': miembro.es_lider
-                    } for miembro in miembros
-                ]
+            if not miembro_terapia:
+                logger.info(f"El usuario {request.user.email} no tiene terapia individual")
+                return Response([], status=status.HTTP_200_OK)
+                
+            terapia = miembro_terapia.terapia
+            serializer = TerapiaSerializer(terapia)
             
-            logger.info(f"Terapias devueltas para usuario {request.user.email}: {len(terapias_data)} terapias")
-            return Response(terapias_data, status=status.HTTP_200_OK)
+            # Construir respuesta simplificada para terapia individual
+            terapia_data = serializer.data
+            terapia_data['fecha_creacion'] = terapia.fecha_creacion.isoformat()
+            
+            # Obtener configuración del chat (si existe)
+            try:
+                chat_config = ChatConfig.objects.get(terapia=terapia)
+                terapia_data['chat_habilitado'] = chat_config.chat_habilitado
+            except ChatConfig.DoesNotExist:
+                terapia_data['chat_habilitado'] = False
+            
+            # Información básica del usuario en la terapia
+            terapia_data['usuario'] = {
+                'id': request.user.id,
+                'nombre': request.user.nombre or request.user.email.split('@')[0],
+                'email': request.user.email
+            }
+            
+            logger.info(f"Terapia individual devuelta para usuario {request.user.email}")
+            return Response([terapia_data], status=status.HTTP_200_OK)
+            
         except Exception as e:
             logger.error(f"Error en ListarTerapiasView: {str(e)}", exc_info=True)
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {'error': 'Error al obtener la terapia individual'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
 # api/views.py
 class DetalleTerapiaView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, terapia_id):
+        """
+        Obtiene los detalles de una terapia individual.
+        Solo permite acceder a la terapia si el usuario es el miembro de la misma.
+        """
         try:
-            miembro = get_object_or_404(MiembroTerapia, usuario=request.user, terapia__id=terapia_id)
+            # Verificar que el usuario es miembro de la terapia
+            miembro = get_object_or_404(
+                MiembroTerapia, 
+                usuario=request.user, 
+                terapia__id=terapia_id,
+                terapia__tipo='individual'  # Solo terapias individuales
+            )
+            
             terapia = miembro.terapia
+            
+            # Obtener la evaluación inicial del usuario si existe
+            try:
+                assessment = InitialAssessment.objects.get(user=request.user, completed=True)
+                completed_assessment = True
+            except InitialAssessment.DoesNotExist:
+                completed_assessment = False
 
-            miembros_query = MiembroTerapia.objects.filter(terapia=terapia).select_related('usuario')
-            miembro_user_ids = list(miembros_query.values_list('usuario_id', flat=True))
-
-            completed_assessments_count = InitialAssessment.objects.filter(
-                user_id__in=miembro_user_ids,
-                completed=True
-            ).count()
-
-            # Obtener configuración del chat
+            # Obtener configuración del chat (si existe)
             try:
                 chat_config = ChatConfig.objects.get(terapia=terapia)
                 chat_habilitado = chat_config.chat_habilitado
             except ChatConfig.DoesNotExist:
-                chat_habilitado = False  # Por defecto, si no hay configuración
+                chat_habilitado = False
 
+            # Construir respuesta
             response_data = {
                 'id': terapia.id,
-                'tipo': terapia.tipo,
-                'nombre_familia': terapia.nombre_familia,
-                'combined_diagnosis': terapia.combined_diagnosis,
-                'miembros': [
-                    {
-                        'id': m.usuario.id,
-                        'email': m.usuario.email,
-                    }
-                    for m in miembros_query
-                ],
-                'limite_miembros': terapia.limite_miembros,
-                'completed_assessments_count': completed_assessments_count,
-                'chat_habilitado': chat_habilitado,  # Nueva propiedad
-                'herramientas': terapia.herramientas,  # Mantener otras herramientas
+                'tipo': 'individual',  # Siempre individual
+                'fecha_creacion': terapia.fecha_creacion.isoformat(),
+                'herramientas': terapia.herramientas,
+                'completed_assessment': completed_assessment,
+                'chat_habilitado': chat_habilitado,
+                'usuario': {
+                    'id': request.user.id,
+                    'nombre': request.user.nombre or request.user.email.split('@')[0],
+                    'email': request.user.email
+                }
             }
-            logger.info(f"Detalles de terapia devueltos para {terapia_id}")
+            
+            logger.info(f"Detalles de terapia individual {terapia_id} devueltos para {request.user.email}")
             return Response(response_data, status=status.HTTP_200_OK)
-        except Terapia.DoesNotExist:
-            logger.error(f"Terapia con ID {terapia_id} no encontrada o usuario no es miembro")
-            return Response({'error': 'Terapia no encontrada o no eres miembro'}, status=status.HTTP_404_NOT_FOUND)
+            
         except Exception as e:
-            logger.error(f"Error en DetalleTerapiaView para Terapia ID {terapia_id}: {str(e)}", exc_info=True)
-            return Response({'error': f'Error interno del servidor: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(
+                f"Error en DetalleTerapiaView para Terapia ID {terapia_id} y usuario {request.user.email}: {str(e)}", 
+                exc_info=True
+            )
+            return Response(
+                {'error': 'No se pudo obtener la información de la terapia'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
         
 class GetPsychologistAvailabilityView(APIView):
@@ -1847,7 +1602,7 @@ class ScheduleFreeSessionView(APIView):
                         tipo='individual',
                         herramientas={'diario': True, 'progreso_personal': True}  # Sin 'chat'
                     )
-                    MiembroTerapia.objects.create(usuario=user, terapia=terapia, es_lider=True)
+                    MiembroTerapia.objects.create(usuario=user, terapia=terapia)
                     # Crear configuración del chat
                     ChatConfig.objects.create(
                         terapia=terapia,

@@ -331,11 +331,9 @@ class EliminarMensajeTerapiaView(APIView):
                 terapia=miembro.terapia # Asegura que el mensaje sea de esta terapia
             )
 
-            # Verificar permiso: O eres el dueño del mensaje O eres líder de la terapia
-            es_lider = miembro.es_lider
-
-            if mensaje.usuario != request.user and not es_lider:
-                logger.warning(f"Intento no autorizado de eliminar mensaje {mensaje_id} por {request.user.email} (no es dueño ni líder)")
+            # Verificar permiso: Solo el dueño del mensaje puede eliminarlo
+            if mensaje.usuario != request.user:
+                logger.warning(f"Intento no autorizado de eliminar mensaje {mensaje_id} por {request.user.email} (no es dueño)")
                 return Response(
                     {'error': 'No tienes permiso para eliminar este mensaje'},
                     status=status.HTTP_403_FORBIDDEN

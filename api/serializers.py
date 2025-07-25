@@ -234,60 +234,33 @@ class UserSerializer(serializers.ModelSerializer):
         return False
 
 
-# --- Serializers relacionados con Terapia (sin cambios respecto a tu versión) ---
+# --- Serializers relacionados con Terapia ---
 class SimpleMiembroSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='usuario.id')
     nombre = serializers.CharField(source='usuario.nombre', allow_null=True)
 
     class Meta:
         model = MiembroTerapia
-        fields = ['id', 'nombre', 'es_lider']
+        fields = ['id', 'nombre']
 
 
 class TerapiaSerializer(serializers.ModelSerializer):
-    # Usar SerializerMethodField para calcular dinámicamente
-    miembros_count = serializers.SerializerMethodField()
-    # limite_miembros puede venir del modelo directamente si no necesita cálculo
-    # limite_miembros = serializers.IntegerField(read_only=True)
-    es_lider = serializers.SerializerMethodField()
-    miembros = SimpleMiembroSerializer(many=True, read_only=True, source='miembroterapia_set')
+    # Mostrar información del miembro (solo habrá uno en terapia individual)
+    miembro = SimpleMiembroSerializer(source='miembroterapia_set.first', read_only=True)
 
     class Meta:
         model = Terapia
-        fields = [
-            'id', 'tipo', 'nombre_familia', 'herramientas', 'fecha_creacion',
-            'miembros_count', 'limite_miembros', 'es_lider', 'miembros'
-        ]
-        read_only_fields = ['fecha_creacion'] # Ejemplo
-
-    def get_es_lider(self, obj):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            # Verificar si el usuario autenticado es miembro líder de esta terapia
-            return MiembroTerapia.objects.filter(
-                terapia=obj,
-                usuario=request.user,
-                es_lider=True
-            ).exists()
-        return False # No autenticado o sin request, no puede ser líder
-
-    def get_miembros_count(self, obj):
-        # Contar los miembros directamente relacionados
-        return obj.miembroterapia_set.count()
-
-    # No necesitas get_limite_miembros si el campo está directamente en el modelo Terapia
-    # def get_limite_miembros(self, obj):
-    #     return obj.limite_miembros or 2  # Valor por defecto si no está definido
+        fields = ['id', 'tipo', 'herramientas', 'fecha_creacion', 'miembro']
+        read_only_fields = ['fecha_creacion']
 
 
 class MiembroTerapiaSerializer(serializers.ModelSerializer):
     # Usar source para acceder a campos del modelo relacionado 'usuario'
     usuario_email = serializers.EmailField(source='usuario.email', read_only=True)
     usuario_nombre = serializers.CharField(source='usuario.nombre', read_only=True, allow_null=True)
-    # Puedes añadir el ID del usuario si lo necesitas en el frontend
     usuario_id = serializers.IntegerField(source='usuario.id', read_only=True)
 
     class Meta:
         model = MiembroTerapia
-        fields = ['usuario_id', 'usuario_email', 'usuario_nombre', 'es_lider', 'rol', 'fecha_union']
-        read_only_fields = ['fecha_union'] # La fecha de unión no debería modificarse
+        fields = ['usuario_id', 'usuario_email', 'usuario_nombre', 'fecha_union']
+        read_only_fields = ['fecha_union']

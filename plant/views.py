@@ -48,10 +48,10 @@ class PlantDetailView(APIView):
         try:
             terapia = Terapia.objects.get(id=terapia_id)
             logger.info(f"Terapia encontrada: {terapia.id}")
-            if not MiembroTerapia.objects.filter(usuario=request.user, terapia=terapia, es_lider=True).exists():
-                logger.warning(f"Usuario {request.user} no es líder de la terapia {terapia_id}")
+            if not MiembroTerapia.objects.filter(usuario=request.user, terapia=terapia).exists():
+                logger.warning(f"Usuario {request.user} no es miembro de la terapia {terapia_id}")
                 return Response(
-                    {'error': 'Solo el líder puede seleccionar la planta'},
+                    {'error': 'No eres miembro de esta terapia'},
                     status=status.HTTP_403_FORBIDDEN
                 )
             
@@ -63,18 +63,25 @@ class PlantDetailView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            # Obtener el nombre personalizado si se proporciona
+            plant_name = request.data.get('name', 'Planta sin nombre')
+            logger.info(f"Nombre de planta recibido: {plant_name}")
+            
             plant, created = Plant.objects.get_or_create(
                 terapia=terapia,
                 defaults={
                     'type': 'arbol' if terapia.tipo == 'familiar' else 'planta',
                     'design': plant_type,
-                    'name': 'Planta sin nombre',
+                    'name': plant_name,
                     'level': 1,
                     'current_streak': 0,
                 }
             )
             if not created:
                 plant.design = plant_type
+                # Actualizar el nombre si se proporciona uno nuevo
+                if 'name' in request.data:
+                    plant.name = plant_name
                 plant.save()
             
             serializer = PlantSerializer(plant)
@@ -115,14 +122,14 @@ class CarePlantView(APIView):
             return Response({'error': 'Planta no encontrada para esta terapia'}, status=status.HTTP_404_NOT_FOUND)
 
 class CustomizePlantView(APIView):
-    """Personalizar el nombre de la planta (solo el líder)."""
+    """Personalizar el nombre de la planta (solo el miembro de la terapia)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, terapia_id):
         try:
             terapia = Terapia.objects.get(id=terapia_id)
-            if not MiembroTerapia.objects.filter(usuario=request.user, terapia=terapia, es_lider=True).exists():
-                return Response({'error': 'Solo el líder puede personalizar la planta'}, status=status.HTTP_403_FORBIDDEN)
+            if not MiembroTerapia.objects.filter(usuario=request.user, terapia=terapia).exists():
+                return Response({'error': 'No eres miembro de esta terapia'}, status=status.HTTP_403_FORBIDDEN)
             
             plant = Plant.objects.get(terapia=terapia)
             name = request.data.get('name')

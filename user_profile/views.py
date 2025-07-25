@@ -9,6 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from api.models import Usuario, MiembroTerapia
 from dashboard.models import Mood
 from dashboard.views import calculate_wellness_days
+# Eliminar esta línea
 from community.models import Post, Group
 from api.serializers import UserSerializer
 
@@ -40,50 +41,8 @@ class PublicProfileView(APIView):
                     'tipo': terapia.tipo,
                 })
 
-            # Obtener posts del usuario
-            user_posts = Post.objects.filter(author=user).order_by('-created_at')[:10]
-            shared_posts = Post.objects.filter(shared_from__isnull=False, author=user).order_by('-created_at')[:10]
             is_own_profile = request.user.is_authenticated and request.user.id == user.id
-            liked_posts = []
-            if is_own_profile or user.profile.public_likes:
-                liked_posts = Post.objects.filter(liked_users=user).order_by('-created_at')[:10]
-
-            posts_data = []
-            for post in user_posts:
-                posts_data.append({
-                    'id': post.id,
-                    'content_excerpt': post.content[:100] + '...' if len(post.content) > 100 else post.content,
-                    'created_at': post.created_at.isoformat(),
-                    'likes': post.likes,
-                    'comments_count': post.comments_count,
-                    'group_name': post.group.name if post.group else None,
-                    'type': 'created'
-                })
-
-            for post in shared_posts:
-                posts_data.append({
-                    'id': post.id,
-                    'content_excerpt': post.content[:100] + '...' if len(post.content) > 100 else post.content,
-                    'created_at': post.created_at.isoformat(),
-                    'likes': post.likes,
-                    'comments_count': post.comments_count,
-                    'group_name': post.group.name if post.group else None,
-                    'original_author': post.shared_from.author.nombre if post.shared_from and post.shared_from.author else 'Desconocido',
-                    'type': 'shared'
-                })
-
-            if is_own_profile or user.profile.public_likes:
-                for post in liked_posts:
-                    posts_data.append({
-                        'id': post.id,
-                        'content_excerpt': post.content[:100] + '...' if len(post.content) > 100 else post.content,
-                        'created_at': post.created_at.isoformat(),
-                        'likes': post.likes,
-                        'comments_count': post.comments_count,
-                        'group_name': post.group.name if post.group else None,
-                        'author_name': post.author.nombre if post.author else 'Desconocido',
-                        'type': 'liked'
-                    })
+            posts_data = []  # Lista vacía ya que no usamos más los posts de la comunidad
 
             # Ensamblar datos del perfil
             response_data = {
@@ -155,24 +114,12 @@ class PrivateProfileView(APIView):
                     'herramientas': herramientas,
                     'miembros_count': miembros.count(),
                     'limite_miembros': terapia.limite_miembros,
-                    'es_lider': MiembroTerapia.objects.filter(terapia=terapia, usuario=user, es_lider=True).exists(),
                     'shared_moods': shared_moods,
                     'miembros_nombres': miembros_nombres,
                 })
 
-            # Posts guardados
-            saved_posts_queryset = user.saved_community_posts.all().select_related('author', 'group').order_by('-created_at')[:15]
-
+            # Posts guardados (comentado porque ya no se usa el área de comunidad)
             saved_posts_data = []
-            for post in saved_posts_queryset:
-                saved_posts_data.append({
-                    'id': post.id,
-                    'author_username': post.author.nombre or post.author.email,
-                    'content_excerpt': post.content[:100] + ('...' if len(post.content) > 100 else ''),
-                    'created_at': post.created_at.isoformat(),
-                    'group_name': post.group.name if post.group else None,
-                    'likes': post.likes,
-                })
 
             # Ensamblar datos del perfil
             profile_data = {
