@@ -10,7 +10,7 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Clave secreta y configuración básica
-SECRET_KEY = config('SECRET_KEY', default='REMOVED_DJANGO_SECRET_KEY')
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-cambia-esta-clave-en-produccion')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
 # Modelo de usuario personalizado
@@ -127,7 +127,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME', default='psicologia'),
         'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='REMOVED_DB_PASSWORD'),
+        'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
     }
@@ -260,7 +260,7 @@ SOCIALACCOUNT_PROVIDERS = {
 
 # Configuración de reCAPTCHA
 RECAPTCHA_PUBLIC_KEY = '6LcFlPAqAAAAAM7CSAxQRFNUN_wzmjNHmK3JyIHQ'
-RECAPTCHA_PRIVATE_KEY = 'REMOVED_RECAPTCHA_PRIVATE_KEY'
+RECAPTCHA_PRIVATE_KEY = config('RECAPTCHA_PRIVATE_KEY', default='')
 RECAPTCHA_REQUIRED_SCORE = 0.5
 
 # Configuración de seguridad (ajustada para desarrollo local)
@@ -331,7 +331,7 @@ PAYU_ACCOUNT_ID = config('PAYU_ACCOUNT_ID')
 PAYU_TEST = config('PAYU_TEST', default=True, cast=bool)
 
 # Configuración para Jitsi JWT
-JITSI_JWT_SECRET = os.environ.get('JITSI_JWT_SECRET', 'REMOVED_JITSI_SECRET')
+JITSI_JWT_SECRET = os.environ.get('JITSI_JWT_SECRET', '')
 JITSI_JWT_ISSUER = 'django-app'
 JITSI_JWT_AUDIENCE = 'jitsi'
 JITSI_JWT_ALGORITHM = 'HS256'
@@ -351,7 +351,6 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'no-reply@senti.lat'
 #EMAIL_HOST_USER = 'sentinfo.com@gmail.com'
-#EMAIL_HOST_PASSWORD = 'REMOVED_EMAIL_APP_PASSWORD'
 #DEFAULT_FROM_EMAIL = 'tu_correo@gmail.com'
 DEFAULT_FROM_EMAIL = f"SentiBien <{EMAIL_HOST_USER}>"
 # 5. No usar SSL explícito (ya que usamos TLS en el puerto 587)

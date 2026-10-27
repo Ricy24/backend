@@ -39,3 +39,15 @@ media/
 
 # Otros archivos específicos de tu proyecto que no deban subirse
 # ...añade aquí otros si los tienes...
+
+# ---- Archivos generados ----
+node_modules/
+output_*.mp3
+
+# ---- Credenciales (NUNCA subir) ----
+credentials.json
+credentials2.json
+credentialsf2.json
+serviceAccountKey.json
+*.key
+*.pem
